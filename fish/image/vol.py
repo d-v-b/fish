@@ -152,7 +152,7 @@ def get_stack_data(raw_path, frameNo=0):
     channel = 0
     if split(raw_path)[0][-2:] == '01':
         channel = 1
-    param_files = glob(raw_path + 'Ch*.xml')
+    param_files = glob(raw_path + 'ch*.xml')
     if len(param_files) == 0:
             print('No .xml files found!')
 
