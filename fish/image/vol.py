@@ -1,6 +1,6 @@
 """ file i/o tools for analyzing light sheet data"""
 
-def projPlot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
+def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
     """
     projPlot(projs, fig=None, clims='auto', fsize=15,asp=10.0, cmap='gray')
 
@@ -69,13 +69,40 @@ def projPlot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
     return imAx
 
 
-def getStackDims(inDir):
+def get_metadata(param_file):
+    """
+    Parse imaging metadata file, returning a dictionary of imaging parameters
+
+    param_file : str, .xml file containing metadata
+    """
+
+    import xml.etree.ElementTree as ET
+    from numpy import array
+
+    exp_dict = {}
+    root = ET.parse(param_file).getroot()
+
+    for r in root.findall('info'):
+        exp_dict[r.keys()[0]] = r.items()[0][1]
+
+    # convert dimensions from a string formatted 'X_sizexY_sizexZsize' to a numpy array
+    if type(exp_dict['dimensions']) is str:
+        exp_dict['dimensions'] = array(exp_dict['dimensions'].split('x')).astype('int')
+
+    # convert z step from string to float
+    if type(exp_dict['z_step']) is str:
+        exp_dict['z_step'] = float(exp_dict['z_step'])
+
+    return exp_dict
+
+
+def get_stack_dims(inDir):
     """
     :param inDir: a string representing a path to a directory containing metadata
     :return: dims, a list of integers representing the xyz dimensions of the data
     """
     import xml.etree.ElementTree as ET
-    from  os.path import split
+    from os.path import split
     
     channel = 0
     if split(split(inDir)[0])[1] == 'CHN01':
@@ -94,7 +121,7 @@ def getStackDims(inDir):
     return dims
 
 
-def getStackFreq(inDir):
+def get_stack_freq(inDir):
     """
     Get the temporal data from the Stack_frequency.txt file found in
     directory inDir. Return volumetric sampling rate in Hz,
@@ -110,7 +137,7 @@ def getStackFreq(inDir):
     return times
 
 
-def getStackData(rawPath, frameNo=0):
+def get_stack_data(rawPath, frameNo=0):
     """
     :rawPath: string representing a path to a directory containing raw data
     :frameNo: int representing the timepoint of the data desired, default is 0
@@ -133,7 +160,7 @@ def getStackData(rawPath, frameNo=0):
     im = im.reshape(dims[-1::-1])
     return im
 
-def vidEmbed(fname, mimetype):
+def vid_embed(fname, mimetype):
     """Load the video in the file `fname`, with given mimetype, and display as HTML5 video.
     Credit: Fernando Perez
     """
@@ -142,7 +169,7 @@ def vidEmbed(fname, mimetype):
     video_tag = '<video controls alt="test" src="data:video/{0};base64,{1}">'.format(mimetype, video_encoded)
     return HTML(data=video_tag)
 
-def volumeMask(vol):
+def volume_mask(vol):
     """
     :param vol: a 3-dimensional numpy array
     :return: mask, a binary mask with the same shape as vol, and mCoords, a list of (x,y,z) indices representing the
