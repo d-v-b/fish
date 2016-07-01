@@ -1,10 +1,9 @@
-import volTools as volt
-import numpy as np
+from fish.image.vol import montage_projection
 import skimage.io as skio
 import os
 from pyspark import SparkConf, SparkContext
 
-conf = SparkConf().setAppName('test_spark_batchmode')
+conf = SparkConf().setAppName('max_projection_montage')
 sc = SparkContext(conf=conf)
 kill_command = '/groups/ahrens/home/bennettd/spark-janelia/spark-janelia destroy'
 
@@ -20,7 +19,7 @@ def make_montage(im_dir):
     print('Experiment name: {0}'.format(exp_name))
     print('Saving to {0}'.format(out_path))
 
-    montage = volt.montage_projection(im_dir, context=sc)
+    montage = montage_projection(im_dir, context=sc)
     skio.imsave(out_path, montage)
     print('Done saving {0} to disk'.format(out_path))
 try:
@@ -29,4 +28,5 @@ try:
 except:
     # tear down spark cluster
     os.system(kill_command)
+
 os.system(kill_command)
