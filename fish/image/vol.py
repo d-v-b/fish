@@ -138,7 +138,7 @@ def get_stack_freq(inDir):
     return times
 
 
-def get_stack_data(rawPath, frameNo=0):
+def get_stack_data(raw_path, frameNo=0):
     """
     :rawPath: string representing a path to a directory containing raw data
     :frameNo: int representing the timepoint of the data desired, default is 0
@@ -150,7 +150,7 @@ def get_stack_data(rawPath, frameNo=0):
     from glob import glob
 
     channel = 0
-    if split(rawPath)[0][-2:] == '01':
+    if split(raw_path)[0][-2:] == '01':
         channel = 1
     param_files = glob(raw_path + 'Ch*.xml')
     if len(param_files) == 0:
@@ -159,9 +159,9 @@ def get_stack_data(rawPath, frameNo=0):
     dims = get_metadata(param_files[0])['dimensions']
     fName = Template('TM${x}_CM0_CHN${y}.stack')
     nDigits_frame = 5
-    nDigits_channel = 2 
+    nDigits_channel = 2
     tmpFName = fName.substitute(x=str(frameNo).zfill(nDigits_frame), y=str(channel).zfill(nDigits_channel))
-    im = fromfile(rawPath + tmpFName, dtype='int16')
+    im = fromfile(raw_path + tmpFName, dtype='int16')
     im = im.reshape(dims[-1::-1])
     return im
 
