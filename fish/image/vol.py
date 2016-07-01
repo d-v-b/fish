@@ -1,5 +1,6 @@
 """ file i/o tools for analyzing light sheet data"""
 
+
 def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
     """
     projPlot(projs, fig=None, clims='auto', fsize=15,asp=10.0, cmap='gray')
@@ -146,16 +147,20 @@ def get_stack_data(rawPath, frameNo=0):
     from numpy import fromfile
     from string import Template
     from os.path import split
+    from glob import glob
 
     channel = 0
     if split(rawPath)[0][-2:] == '01':
         channel = 1
-    
-    dims = getStackDims(rawPath)
+    param_files = glob(raw_path + 'Ch*.xml')
+    if len(param_files) == 0:
+            print('No .xml files found!')
+
+    dims = get_metadata(param_files[0])['dimensions']
     fName = Template('TM${x}_CM0_CHN${y}.stack')
     nDigits_frame = 5
-    nDigits_channel = 2
-    tmpFName = fName.substitute(x = str(frameNo).zfill(nDigits_frame), y = str(channel).zfill(nDigits_channel))
+    nDigits_channel = 2 
+    tmpFName = fName.substitute(x=str(frameNo).zfill(nDigits_frame), y=str(channel).zfill(nDigits_channel))
     im = fromfile(rawPath + tmpFName, dtype='int16')
     im = im.reshape(dims[-1::-1])
     return im
@@ -193,6 +198,7 @@ def volume_mask(vol):
 
     return mask, mCoords
 
+
 def kvp_to_array(dims, data, ind=0, baseline=0):
     """ Convert a list of key-value pairs to a volume.
 
@@ -214,6 +220,7 @@ def kvp_to_array(dims, data, ind=0, baseline=0):
             vol[k] = v
     return vol
 
+
 def montage_projection(im_dir, trange=None, context=None):
     """
     Generate a montage of x projections.
@@ -225,25 +232,34 @@ def montage_projection(im_dir, trange=None, context=None):
     context : spark context object for parallelization
     """
     import thunder as td
-    import skimage.external.tifffile as tif
     from glob import glob
     from skimage.util.montage import montage2d
     from skimage.exposure import rescale_intensity as rescale
     import numpy as np
-    from skimage import io
+    from pyklb import readfull
 
     exp_name = im_dir.split('/')[-2]
 
     print('Exp name: {0}'.format(exp_name))
-    ims = td.images.fromtif(im_dir + 'TM*.tif', engine=context)
+
+    fnames = glob(im_dir + 'TM*.klb')
+    fnames.sort()
+
+    def klb_loader(v):
+        return pyklb.readfull(v)
+
+    ims = td.images.fromlist(fnames, accessor=klb_loader, engine=context)
+
     print('Experiment dims: {0}'.format(ims.shape))
     
     if trange is None:
         trange = np.arange(ims.shape[0])
     
-    ims_cropped = ims[trange].median_filter([1,3,3])
+    ims_cropped = ims[trange].median_filter([1, 3, 3])
     dims = ims_cropped.dims
-    
+
+    #todo: apply registration if available
+
     from scipy.ndimage import percentile_filter
     float_dtype = 'float32'
     
