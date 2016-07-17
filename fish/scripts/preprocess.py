@@ -3,27 +3,27 @@ Run initial processing of raw light sheet data using spark
 """
 from glob import glob
 from pyspark import SparkConf, SparkContext
-from fish.image import alignment
 from fish.util import fileio
 import thunder as td
-import pyklb 
 from skimage.io import imsave
 from numpy import save, load
-from os.path import exists
 
 conf = SparkConf().setAppName('preprocessing')
 sc = SparkContext(conf=conf)
 
 to_process = glob('/nobackup/ahrens/davis/data/raw/20160614/*/')
-do = {}
+do = dict()
 
 do['local_corr'] = False
-do['raw_mean'] = True
-do['estimate_motion'] = False
+do['raw_mean'] = False
+do['estimate_motion'] = True
 
 dest_fmt = 'klb'
 glob_key = 'TM*.{0}'.format(dest_fmt)
-klb_loader = lambda v: pyklb.readfull(v)
+
+def klb_loader(v):
+    from pyklb import readfull
+    return readfull(v)
 
 def source_conversion(raw_dir):
     raw_fnames = glob(raw_dir + 'TM*.stack')
@@ -56,18 +56,21 @@ def mean_by_plane(images_object, thr=105):
     def thr_mean(vol, thr):
         return array([v[v > thr].mean() for v in vol])
     
-    mean_fun = lambda x: array([thr_mean(x[: ,:(x.shape[1] // 2), :], thr=thr), thr_mean(x[:, (x.shape[1] // 2):, :], thr=thr)])
+    mean_fun = lambda x: array([thr_mean(x[: , :(x.shape[1] // 2), :], thr=thr), thr_mean(x[:, (x.shape[1] // 2):, :], thr=thr)])
     return images_object.map(mean_fun).toarray()
 
 
 def estimate_motion(fnames, save_reference=True):
     from numpy import arange
-    dat = td.images.fromlist(fnames, accessor = klb_loader, engine=sc, npartitions=len(fnames))
+    dat = td.images.fromlist(fnames, accessor=klb_loader, engine=sc, npartitions=len(fnames))
     num_frames = dat.shape[0]
     ref_length = 5
     refR = (num_frames // 2) + arange(-ref_length // 2, ref_length // 2)
     ref = td.images.fromlist(fnames[slice(refR[0], refR[-1])], accessor=klb_loader).mean().toarray()
     ref_bc = sc.broadcast(ref)
+
+    # apply some cleaning to images to try to mitigate activity-based translation artifacts
+    dat_reg = dat.map(lambda v: v.clip(max=120))
 
     def proj_reg_batch(fixed, moving):
         from numpy import array, max
@@ -77,7 +80,7 @@ def estimate_motion(fnames, save_reference=True):
         dxdydz = array(tx.GetParameters())
         return dxdydz
 
-    result = dat.map(lambda v: proj_reg_batch(ref_bc.value, v)).toarray().T
+    result = dat_reg.map(lambda v: proj_reg_batch(ref_bc.value, v)).toarray().T
     return result
 
 
@@ -85,7 +88,7 @@ def transform_images(ims, reg_params):
     reg_bc = sc.broadcast(reg_params)
     dims = ims.shape[1:]
     nrecords = ims.shape[0]
-    def warp_image(kv):     
+    def warp_image(kv):
         from SimpleITK import AffineTransform    
         from fish.image.alignment import apply_transform_itk
         tx = AffineTransform(len(kv[1].shape))
