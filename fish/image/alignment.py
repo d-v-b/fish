@@ -114,15 +114,33 @@ def proj_reg_batch(fixed, moving):
         The reference image.
 
     moving : numpy array, 2D or 3D
-        The image to be transformed.
+    The image to be transformed.
     """
-    from numpy import array, max
+    from numpy import array, max    
+
     tx = proj_reg(fixed, moving, max)
     # Transpose to get array with shape [dimensions, time]
     dxdydz = array(tx.GetParameters()).T
 
     return dxdydz
 
+def estimate_translation_batch(fixed, moving):
+    """
+    Convenience function for efficiently estimating a transformation between volumes in a parallel context.
+
+    Parameters
+    ----------
+    fixed : numpy array, 2D or 3D
+        The reference image.
+
+    moving : numpy array, 2D or 3D
+    The image to be transformed.
+    """
+    from numpy import array
+    tx = estimate_translation_itk(fixed, moving)
+    dxdydz = array(tx.GetParameters()).T
+
+    return dxdydz
 
 
 def ants_registration(fixed, moving, out_tform, tip='r', restrict=None):

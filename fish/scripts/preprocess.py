@@ -62,6 +62,7 @@ def mean_by_plane(images_object, thr=105):
 
 def estimate_motion(fnames, save_reference=True):
     from numpy import arange
+    from fish.image.alignment import estimate_translation_batch
     dat = td.images.fromlist(fnames, accessor=klb_loader, engine=sc, npartitions=len(fnames))
     num_frames = dat.shape[0]
     ref_length = 5
@@ -70,17 +71,8 @@ def estimate_motion(fnames, save_reference=True):
     ref_bc = sc.broadcast(ref)
 
     # apply some cleaning to images to try to mitigate activity-based translation artifacts
-    dat_reg = dat.map(lambda v: v.clip(max=120))
-
-    def proj_reg_batch(fixed, moving):
-        from numpy import array, max
-        from fish.image.alignment import proj_reg
-
-        tx = proj_reg(fixed, moving, max)
-        dxdydz = array(tx.GetParameters())
-        return dxdydz
-
-    result = dat_reg.map(lambda v: proj_reg_batch(ref_bc.value, v)).toarray().T
+    dat_reg = dat.median_filter()
+    result = dat_reg.map(lambda v: estimate_translation_batch(ref_bc.value, v)).toarray().T
     return result
 
 
@@ -123,7 +115,7 @@ for raw_dir in to_process:
         save(raw_mean_path, raw_mean)
         print('Finished calculating raw mean')
     else:
-        print('Raw mean already calculated.')
+        print('Not calculating raw mean.')
     
     if do ['estimate_motion']:
         print('Begin estimating motion')
@@ -131,7 +123,7 @@ for raw_dir in to_process:
         save(reg_params_path, reg_params)
         print('Finished estimating motion')
     else:
-        print('Registration params already calculated.')
+        print('Not estimating motion.')
         reg_params = load(reg_params_path)
 
     if do['local_corr']:
@@ -145,5 +137,5 @@ for raw_dir in to_process:
         imsave(local_corr_path, local_corr, compress=1)
         print('Finished calculating local correlation')
     else:
-        print('Local correlation already calculated')
+        print('Not performing local correlation')
 
