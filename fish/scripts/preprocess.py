@@ -21,9 +21,11 @@ do['estimate_motion'] = True
 dest_fmt = 'klb'
 glob_key = 'TM*.{0}'.format(dest_fmt)
 
+
 def klb_loader(v):
     from pyklb import readfull
     return readfull(v)
+
 
 def source_conversion(raw_dir):
     raw_fnames = glob(raw_dir + 'TM*.stack')
@@ -33,6 +35,7 @@ def source_conversion(raw_dir):
         raw_fnames_rdd.foreach(lambda v: fileio.image_conversion(v, dest_fmt='klb', wipe=True))
     else:
         print('No stack files found. Doing nothing.')
+
 
 def prepare_directories(raw_dir):
     from os import makedirs
@@ -56,13 +59,14 @@ def mean_by_plane(images_object, thr=105):
     def thr_mean(vol, thr):
         return array([v[v > thr].mean() for v in vol])
     
-    mean_fun = lambda x: array([thr_mean(x[: , :(x.shape[1] // 2), :], thr=thr), thr_mean(x[:, (x.shape[1] // 2):, :], thr=thr)])
+    mean_fun = lambda x: array([thr_mean(x[:, :(x.shape[1] // 2), :], thr=thr), thr_mean(x[:, (x.shape[1] // 2):, :], thr=thr)])
     return images_object.map(mean_fun).toarray()
 
 
-def estimate_motion(fnames, save_reference=True):
+def estimate_motion(fnames):
     from numpy import arange
     from fish.image.alignment import estimate_translation_batch
+
     dat = td.images.fromlist(fnames, accessor=klb_loader, engine=sc, npartitions=len(fnames))
     num_frames = dat.shape[0]
     ref_length = 5
@@ -80,6 +84,7 @@ def transform_images(ims, reg_params):
     reg_bc = sc.broadcast(reg_params)
     dims = ims.shape[1:]
     nrecords = ims.shape[0]
+
     def warp_image(kv):
         from SimpleITK import AffineTransform    
         from fish.image.alignment import apply_transform_itk

@@ -116,13 +116,17 @@ def proj_reg_batch(fixed, moving):
     moving : numpy array, 2D or 3D
     The image to be transformed.
     """
-    from numpy import array, max    
+    from numpy import array, max
+    from vol import sub_proj
 
-    tx = proj_reg(fixed, moving, max)
+    # tx = proj_reg(fixed, moving, max)
+    tx = proj_reg(fixed, moving, sub_proj)
+
     # Transpose to get array with shape [dimensions, time]
     dxdydz = array(tx.GetParameters()).T
 
     return dxdydz
+
 
 def estimate_translation_batch(fixed, moving):
     """

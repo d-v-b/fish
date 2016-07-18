@@ -19,6 +19,7 @@ im_dirs = ['/nobackup/ahrens/davis/data/raw/20160608/6dpf_cy171xcy221_f1_omr_1_2
            '/nobackup/ahrens/davis/data/raw/20160614/5dpf_cy171xcy221_f1_caudal_omr_1_20160614_183344/',
            '/nobackup/ahrens/davis/data/raw/20160614/5dpf_cy171xcy221_f1_caudal_omr_2_20160614_185018/']
 
+
 def get_translation(im_dir, sc):
     raw_dir = im_dir
     reg_dir = ftools.dirStructure(raw_dir) + 'reg/'
