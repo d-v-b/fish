@@ -165,6 +165,7 @@ def get_stack_data(raw_path, frameNo=0):
     im = im.reshape(dims[-1::-1])
     return im
 
+
 def vid_embed(fname, mimetype):
     """Load the video in the file `fname`, with given mimetype, and display as HTML5 video.
     Credit: Fernando Perez
@@ -173,6 +174,7 @@ def vid_embed(fname, mimetype):
     video_encoded = open(fname, "rb").read().encode("base64")
     video_tag = '<video controls alt="test" src="data:video/{0};base64,{1}">'.format(mimetype, video_encoded)
     return HTML(data=video_tag)
+
 
 def volume_mask(vol):
     """
@@ -219,6 +221,39 @@ def kvp_to_array(dims, data, ind=0, baseline=0):
         else:
             vol[k] = v
     return vol
+
+
+def sub_proj(im, ax, chop=16):
+    """
+    Max project a volume in chunks along an axis.
+
+    im : numpy array, data to be projected
+
+    ax : int, axis to project along
+
+    chop : int, number of projections to generate
+
+    """
+    from numpy import rollaxis,
+
+    extra = im.shape[ax] % chop
+    montage_dims = list(im.shape)
+    montage_dims[ax] //= chop
+    montage_dims.insert(ax, chop)
+
+    slices_crop = [slice(None) for x in im.shape]
+    slices_crop[ax] = slice(0, extra + 1, 1)
+
+    # remove trailing data by projecting it down to a single plane
+    im[slices_crop] = im[slices_crop].max(ax, keepdims=True)
+
+    slices_keep = [slice(None) for x in im.shape]
+    slices_keep[ax] = slice(extra, None)
+    im_proj = im[slices_keep].reshape(montage_dims).max(ax + 1)
+    # stick the axis of projections in the front
+    im_proj = rollaxis(im_proj, ax, 0)
+
+    return im_proj
 
 
 def montage_projection(im_dir, trange=None, context=None):
