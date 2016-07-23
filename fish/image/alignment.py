@@ -56,7 +56,7 @@ def apply_transform_itk(tx, moving, baseline=100):
     moving_ = sitk.GetImageFromArray(moving.astype('float32'))
     resampler = sitk.ResampleImageFilter()
     resampler.SetReferenceImage(moving_)
-    resampler.SetInterpolator(sitk.sitkLinear)
+    resampler.SetInterpolator(sitk.sitkBSpline)
     resampler.SetDefaultPixelValue(baseline)
     resampler.SetTransform(tx)
     out = sitk.GetArrayFromImage(resampler.Execute(moving_))
@@ -117,10 +117,19 @@ def proj_reg_batch(fixed, moving):
     The image to be transformed.
     """
     from numpy import array, max
-    from vol import sub_proj
+    from fish.image.vol import sub_proj
+    from skimage.util.montage import montage2d
+    
+    def proj_fun(v, ax):
+        if ax == 0:
+            return montage2d(sub_proj(v, ax, 8))
+        elif ax == 1:
+            return montage2d(sub_proj(v, ax, 64))
+        elif ax == 2:
+            return montage2d(sub_proj(v, ax, 64))
 
     # tx = proj_reg(fixed, moving, max)
-    tx = proj_reg(fixed, moving, sub_proj)
+    tx = proj_reg(fixed, moving, proj_fun)
 
     # Transpose to get array with shape [dimensions, time]
     dxdydz = array(tx.GetParameters()).T

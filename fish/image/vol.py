@@ -234,7 +234,7 @@ def sub_proj(im, ax, chop=16):
     chop : int, number of projections to generate
 
     """
-    from numpy import rollaxis,
+    from numpy import rollaxis
 
     extra = im.shape[ax] % chop
     montage_dims = list(im.shape)

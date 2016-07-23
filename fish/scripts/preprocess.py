@@ -7,11 +7,12 @@ from fish.util import fileio
 import thunder as td
 from skimage.io import imsave
 from numpy import save, load
+from time import perf_counter
 
 conf = SparkConf().setAppName('preprocessing')
 sc = SparkContext(conf=conf)
 
-to_process = glob('/nobackup/ahrens/davis/data/raw/20160614/*/')
+to_process = glob('/nobackup/ahrens/davis/data/raw/20160608/*/')
 do = dict()
 
 do['local_corr'] = False
@@ -66,6 +67,7 @@ def mean_by_plane(images_object, thr=105):
 def estimate_motion(fnames):
     from numpy import arange
     from fish.image.alignment import estimate_translation_batch
+    from fish.image.alignment import proj_reg_batch
 
     dat = td.images.fromlist(fnames, accessor=klb_loader, engine=sc, npartitions=len(fnames))
     num_frames = dat.shape[0]
@@ -76,7 +78,10 @@ def estimate_motion(fnames):
 
     # apply some cleaning to images to try to mitigate activity-based translation artifacts
     dat_reg = dat.median_filter()
-    result = dat_reg.map(lambda v: estimate_translation_batch(ref_bc.value, v)).toarray().T
+    
+    # this is a backup method that's slower but more accurate
+    #result = dat_reg.map(lambda v: estimate_translation_batch(ref_bc.value, v)).toarray().T
+    result = dat_reg.map(lambda v: proj_reg_batch(ref_bc.value, v)).toarray().T
     return result
 
 
@@ -116,17 +121,21 @@ for raw_dir in to_process:
 
     if do['raw_mean']:
         print('Begin calculating raw mean')
+        t_mean = perf_counter()
         raw_mean = mean_by_plane(ims)
         save(raw_mean_path, raw_mean)
-        print('Finished calculating raw mean')
+        dt_mean = perf_counter() - t_mean
+        print('Finished calculating raw mean in {0} s'.format(dt_mean))
     else:
         print('Not calculating raw mean.')
     
     if do ['estimate_motion']:
         print('Begin estimating motion')
+        t_motion = perf_counter()
         reg_params = estimate_motion(fnames)
         save(reg_params_path, reg_params)
-        print('Finished estimating motion')
+        dt_motion = perf_counter() - t_motion
+        print('Finished estimating motion in {0} s'.format(dt_motion))
     else:
         print('Not estimating motion.')
         reg_params = load(reg_params_path)
@@ -137,10 +146,11 @@ for raw_dir in to_process:
         print('Done transforming images.')
         print('Begin local correlation')
         #for z in range(dims[0]):
+        t_locorr = perf_counter()
         local_corr = ims_tx[:,0].localcorr().toarray()
-        
-        imsave(local_corr_path, local_corr, compress=1)
-        print('Finished calculating local correlation')
+        dt_locorr = perf_counter() - t_locorr
+        imsave(local_corr_path, local_corr, compress=1)       
+        print('Finished calculating local correlation in {0} s'.format(dt_locorr))
     else:
         print('Not performing local correlation')
 
