@@ -138,9 +138,9 @@ def load(inFile):
     data = np.fromfile(file=fd, dtype=np.float32)
     trim = len(data) % 10
     if trim == 0:
-        data = data.reshape(len(data)/10, 10).T
+        data = data.reshape(len(data)//10, 10).T
     else:
         data = data[:-trim]
-        data = data.reshape(len(data)/10, 10).T
+        data = data.reshape(len(data)//10, 10).T
         print('Data needed to be truncated!')
     return data
