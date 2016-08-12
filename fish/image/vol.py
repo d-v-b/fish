@@ -1,5 +1,16 @@
-""" file i/o tools for analyzing light sheet data"""
+""" tools for analyzing light sheet data"""
 
+def local_corr(ims, offset=[0,1,1]):    
+    from scipy.ndimage.interpolation import shift
+    
+    def correlate_signals(s1,s2):    
+        from numpy import corrcoef
+        return corrcoef(s1,s2)[0][1]
+    
+    ims_shifted = ims.map(lambda v: shift(v.astype('float32'), offset, mode='reflect')).astype('float16')
+    joined = ims.toseries().tordd().join(ims_shifted.toseries().tordd())
+    
+    return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
     """
