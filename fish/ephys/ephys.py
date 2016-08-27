@@ -2,7 +2,7 @@
 
 import numpy as np 
 
-def chopTrials(signal,trialThr=2000):
+def chopTrials(signal, trialThr=2000):
     """for each unique value in the signal, 
        return the start and stop of each epoch corresponding to that value
     """
@@ -141,6 +141,6 @@ def load(inFile):
         data = data.reshape(len(data)//10, 10).T
     else:
         data = data[:-trim]
-        data = data.reshape(len(data)//10, 10).T
+        data = data.reshape(len(data) // 10, 10).T
         print('Data needed to be truncated!')
     return data
