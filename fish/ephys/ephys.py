@@ -95,17 +95,17 @@ def windowed_variance(signal, kern_mean=None, kern_var=None):
     from scipy.signal import gaussian, fftconvolve
 
     if kern_mean is None:
-        kern_mean = gaussian(121, 20)
+        kern_mean = gaussian(221, 20)
         kern_mean /= kern_mean.sum()
 
     if kern_var is None:
-        kern_var = gaussian(121, 20)
+        kern_var = gaussian(221, 20)
         kern_var /= kern_var.sum()
 
     mean_estimate = fftconvolve(signal, kern_mean, 'same')
     power = (signal - mean_estimate)**2
     fltch = fftconvolve(power, kern_var, 'same')
-    return fltch
+    return mean_estimate, power, fltch
 
 
 # get peaks
@@ -148,15 +148,14 @@ def getThreshold(fltch, wind=180000, shiftScale=1.6):
     return th
 
 
-def load(in_file):
-    """Load 10chFlt data from disk, return as a [channels,samples] sized numpy array
+def load(in_file, n_chan=10):
+    """Load multichannel binary data from disk, return as a [channels,samples] sized numpy array
     """
     from numpy import fromfile, float32
 
     fd = open(in_file, 'rb')
     data = fromfile(file=fd, dtype=float32)
-    n_chan = 10
-    trim = len(data) % n_chan
+    trim = data.size % n_chan
     # transpose to make dimensions [channels, time]
     data = data[:(data.size - trim)].reshape(data.size // n_chan, n_chan).T
     if trim > 0:

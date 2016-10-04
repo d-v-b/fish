@@ -12,7 +12,8 @@ def local_corr(ims, offset=[0,1,1]):
     
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
-def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
+
+def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10, cmap='gray'):
     """
     projPlot(projs, fig=None, clims='auto', fsize=15,asp=10.0, cmap='gray')
 
@@ -26,9 +27,9 @@ def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
 
     # calculate clims if necessary
     if clims == 'auto':
-        clims = [np.percentile(p,[0,99.99]) for p in projs]
+        clims = [np.percentile(p,[0, 99.99]) for p in projs]
 
-    ori = 'bottom'
+    ori = 'lower'
 
     x = float(projs[1].shape[0])
     y = float(projs[0].shape[0])
@@ -52,25 +53,25 @@ def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10.0, cmap='gray'):
 
     imAx = []
 
-    projZY = projs[0]
-    projZX = projs[1]
-    projXY = projs[2]
+    proj_zy = projs[0]
+    proj_zx = projs[1]
+    proj_xy = projs[2]
 
     # (z,y) projection
     imAx.append(plt.subplot(gs[-3]))
-    plt.imshow(projZY, aspect = 1/asp, origin=ori, cmap=cmap, clim = clims[0])
+    plt.imshow(proj_zy, aspect=1/asp, origin=ori, cmap=cmap, clim=clims[0])
     imAx[0].yaxis.set_visible(False)
     imAx[0].yaxis.tick_right()
     [imAx[0].spines[x].set_color('w') for x in positions]
 
     # (z,x) projection
     imAx.append(plt.subplot(gs[-2]))
-    plt.imshow(projZX.T, aspect = asp, origin=ori, cmap=cmap, clim = clims[1])
+    plt.imshow(projZX.T, aspect=asp, origin=ori, cmap=cmap, clim=clims[1])
     [imAx[1].spines[x].set_color('w') for x in positions]
 
     # (x,y) projection
     imAx.append(plt.subplot(gs[-4]))
-    plt.imshow(projXY.T, origin=ori, cmap=cmap, clim = clims[2])
+    plt.imshow(projXY.T, origin=ori, cmap=cmap, clim=clims[2])
     [imAx[2].spines[x].set_color('w') for x in positions]
     imAx[2].xaxis.set_visible(False)
 
