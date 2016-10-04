@@ -12,12 +12,17 @@ from time import perf_counter
 conf = SparkConf().setAppName('preprocessing')
 sc = SparkContext(conf=conf)
 
-to_process = glob('/nobackup/ahrens/davis/data/raw/20160608/*/')
-do = dict()
+to_process = ['/nobackup/ahrens/davis/data/raw/20141114/20141114_GFAP_GC6F_7DPF_FLASH_3_20141114_230658/']
 
+do = dict()
 do['local_corr'] = False
-do['raw_mean'] = False
-do['estimate_motion'] = True
+do['raw_mean'] = True
+do['estimate_motion'] = False
+
+overwrite = dict()
+overwrite['raw_mean'] = False
+overwrite['local_corr'] = False
+overwrite['estimate_motion'] = False
 
 dest_fmt = 'klb'
 glob_key = 'TM*.{0}'.format(dest_fmt)
@@ -119,7 +124,7 @@ for raw_dir in to_process:
     ims = td.images.fromlist(fnames, accessor=klb_loader, engine=sc, npartitions=len(fnames))
     dims = ims.shape[1:]
 
-    if do['raw_mean']:
+    if do['raw_mean'] and overwrite['raw_mean']:
         print('Begin calculating raw mean')
         t_mean = perf_counter()
         raw_mean = mean_by_plane(ims)
@@ -129,7 +134,7 @@ for raw_dir in to_process:
     else:
         print('Not calculating raw mean.')
     
-    if do ['estimate_motion']:
+    if do ['estimate_motion'] and overwrite['estimate_motion'] :
         print('Begin estimating motion')
         t_motion = perf_counter()
         reg_params = estimate_motion(fnames)
@@ -140,7 +145,7 @@ for raw_dir in to_process:
         print('Not estimating motion.')
         reg_params = load(reg_params_path)
 
-    if do['local_corr']:
+    if do['local_corr'] and overwrite['local_corr']:
         print('Begin transforming images')
         ims_tx = transform_images(ims, reg_params)
         print('Done transforming images.')
