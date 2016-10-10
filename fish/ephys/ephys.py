@@ -132,18 +132,23 @@ def getPeaks(fltch, deadTime=80):
 
 
 # find threshold
-def getThreshold(fltch, wind=180000, shiftScale=1.6):
-    
-    th = np.zeros(fltch.shape)
-    
-    for t in np.arange(0, fltch.size-wind, wind):
+def getThreshold(vec, window=180000, scaling=1.6):
+    """
+    Return non-sliding windowed threshold of input ndarray vec
 
-        interval = np.arange(t, t+wind)
-        sqrFltch = fltch ** .5            
-        hist, bins = np.histogram(sqrFltch[interval], 1000)
-        mx = np.min(np.where(hist == np.max(hist)))
-        mn = np.max(np.where(hist[0:mx] < hist[mx]/200.0))        
-        th[t:] = (bins[mx] + shiftScale * (bins[mx] - bins[mn]))**2.0
+    vec : ndarray, input array to be thresholded
+    window : step size / window length of the thresholding
+    scaling : scaling factor applied to estimated spread of the noise distribution of vec, sets magnitude of threshold
+    """
+    from numpy import zeros, percentile, arange, median
+
+    th = zeros(vec.shape)
+    for t in arange(0, vec.size-wind, wind):
+        plr = arange(t, min(t+window, vec.size))
+        sig = vec[plr]
+        med = median(sig)
+        bottom = percentile(sig, .1)
+        th[t:] = (med + scaling * (med - bottom))
 
     return th
 
