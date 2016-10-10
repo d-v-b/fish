@@ -132,7 +132,7 @@ def getPeaks(fltch, deadTime=80):
 
 
 # find threshold
-def getThreshold(vec, window=180000, scaling=1.6):
+def estimate_threshold(vec, window=180000, scaling=1.6):
     """
     Return non-sliding windowed threshold of input ndarray vec
 
