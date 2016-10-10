@@ -5,13 +5,13 @@ def chopTrials(signal, trialThr=2000):
     """for each unique value in the signal, 
        return the start and stop of each epoch corresponding to that value
     """
-    from numpy import unique, where, concatenate
+    from numpy import unique, where, concatenate, diff
 
     conditions = unique(signal)
     chopped = {}
     for c in conditions:
         tmp = where(signal == c)[0]
-        offs = where(np.diff(tmp) > 1)[0]
+        offs = where(diff(tmp) > 1)[0]
         offs = concatenate((offs, [tmp.size-1]))
         ons = concatenate(([0], offs[0:-1] + 1))
         trLens = offs - ons        
