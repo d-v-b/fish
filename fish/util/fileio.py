@@ -59,7 +59,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
     dest_path = source_name + '.' + dest_fmt
 
     def stack_loader(stack_path):
-        import fish.image.vol as volt
+        from ..image import vol as volt
         from numpy import fromfile
         from os.path import sep, split
         dims = volt.getStackDims(split(stack_path)[0] + sep)
@@ -92,8 +92,8 @@ def image_conversion(source_path, dest_fmt, wipe=False):
 
     def h5_reader(h5_path):
         from h5py import File
-        f = File(h5_path, 'r')
-        return f['default'].value
+        with File(h5_path, 'r') as f:
+            return f['default'].value
 
     if source_fmt == 'stack':
         source_loader = stack_loader
