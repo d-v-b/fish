@@ -62,7 +62,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
         from ..image import vol as volt
         from numpy import fromfile
         from os.path import sep, split
-        dims = volt.getStackDims(split(stack_path)[0] + sep)
+        dims = volt.get_stack_dims(split(stack_path)[0] + sep)
         im = fromfile(stack_path, dtype='int16')
         im = im.reshape(dims[-1::-1])
         return im
