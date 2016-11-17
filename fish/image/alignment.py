@@ -2,11 +2,11 @@
 """
 
 
-def estimate_translation_itk(fixed, moving):
+def estimate_transform_itk(fixed, moving, transformer):
     """
-    Use SimpleITK to estimate the translation between two images
+    Use SimpleITK to estimate a transformation between two images
 
-    Returns a SimpleITK.TranslationTransform object
+    Returns a SimpleITK.Transform object
 
     Parameters
     ----------
@@ -15,25 +15,14 @@ def estimate_translation_itk(fixed, moving):
 
     moving : numpy array, 2D or 3D (dims must match fixed)
         The image to be transformed. The estimated transformation will take moving --> fixed.
+
+    transformer : SimpleITK ImageRegistrationMethod object
+        Object that specifies transform to estimate and the method for doing so
     """
-    import SimpleITK as sitk
-    fixed_ = sitk.GetImageFromArray(fixed.astype('float32'))
-    moving_ = sitk.GetImageFromArray(moving.astype('float32'))
-    r = sitk.ImageRegistrationMethod()
-    r.SetMetricAsMattesMutualInformation(numberOfHistogramBins=32)
-    r.SetOptimizerAsRegularStepGradientDescent(learningRate=0.1,
-                                               minStep=1e-5,
-                                               numberOfIterations=100,
-                                               gradientMagnitudeTolerance=1e-8)
-    r.SetMetricSamplingStrategy(r.REGULAR)
-    r.SetMetricSamplingPercentage(.25)
-    tx = sitk.TranslationTransform(fixed_.GetDimension())
-    r.SetInitialTransform(tx)
-    r.SetSmoothingSigmasAreSpecifiedInPhysicalUnits(False)
-    r.SetShrinkFactorsPerLevel(shrinkFactors = [8, 4, 2])
-    r.SetSmoothingSigmasPerLevel(smoothingSigmas=[3, 2, 1])
-    r.SetInterpolator(sitk.sitkLinear)
-    out_tx = r.Execute(fixed_, moving_)
+    from SimpleITK import GetImageFromArray
+    fixed_ = GetImageFromArray(fixed.astype('float32'))
+    moving_ = GetImageFromArray(moving.astype('float32'))
+    out_tx = transformer.Execute(fixed_, moving_)
     return out_tx
 
 
@@ -52,9 +41,9 @@ def apply_transform_itk(tx, moving, baseline=100):
         The fill value added to edges of the transformed image
     """
 
-    import SimpleITK as sitk
-    moving_ = sitk.GetImageFromArray(moving.astype('float32'))
-    resampler = sitk.ResampleImageFilter()
+    from SimpleITK import GetImageFromArray, ResampleImageFilter
+    moving_ = GetImageFromArray(moving.astype('float32'))
+    resampler = ResampleImageFilter()
     resampler.SetReferenceImage(moving_)
     resampler.SetInterpolator(sitk.sitkBSpline)
     resampler.SetDefaultPixelValue(baseline)
@@ -65,8 +54,8 @@ def apply_transform_itk(tx, moving, baseline=100):
 
 def proj_reg(fixed, moving, p_fun):
     """
-    Use SimpleITK to estimate transformation between two images by estimating transformations between the projections
-    of the images
+    Estimate 3d translation between two volumes by estimating translations between the projections
+    of the volumes
 
     Parameters
     ----------
@@ -79,27 +68,32 @@ def proj_reg(fixed, moving, p_fun):
     p_fun : projection function, must take an image and an integer as arguments
         A function that generates a lower-dimensional projection of an image, e.g. numpy.max()
     """
-    import SimpleITK as sitk
-    from numpy import zeros, where, fliplr, eye, array
+    from numpy import zeros, where, fliplr, eye, nan, nanmedian
 
     txs = []
-    n_dim = len(fixed.shape)
-
+    n_dim = fixed.ndim
     for dim in range(n_dim):
-        txs.append(estimate_translation_itk(p_fun(fixed, dim), p_fun(moving, dim)))
+        txs.append(estimate_translation(p_fun(fixed, dim), p_fun(moving, dim)).affine)
 
-    # generate a new transform that averages the transforms estimated for each axis
-    params = array([t.GetParameters() for t in txs])
-    inds = where(fliplr(1 - eye(n_dim)))
-    full_mat = zeros([n_dim, n_dim])
-    full_mat[inds] = params.ravel()
+    # This commented block attempts to combine the transforms estimated on projections into a single transform.
+    # But this might not be the best approach. In lieu of that, i'm gonna return the full list of estimated transforms
+
+    # generate a new transform that based on the transforms estimated for each axis
+    # inds = where(fliplr(1 - eye(n_dim)))
+    # full_mat = zeros([n_dim, n_dim])
+    # full_mat += nan
+    # full_mat[inds] = params.ravel()
     # take a sum down the columns of full_mat, divide by n_dim - 1
-    d_xyz = full_mat.sum(0) / (n_dim-1)
+    # todo: replace with median
+    # d_xyz = nanmedian(full_mat, axis=0)
 
-    final_tx = sitk.TranslationTransform(len(fixed.shape))
-    final_tx.SetParameters(d_xyz)
+    # replace sitk translation transform with dipy object
+    # final_tx = TranslationTransform3D()
+    # final_tx.affine = d_xyz
+    # final_tx = sitk.TranslationTransform(len(fixed.shape))
+    # final_tx.SetParameters(d_xyz)
 
-    return final_tx
+    return txs
 
 
 def proj_reg_batch(fixed, moving):
@@ -132,10 +126,50 @@ def proj_reg_batch(fixed, moving):
     tx = proj_reg(fixed, moving, proj_fun)
 
     # Transpose to get array with shape [dimensions, time]
-    dxdydz = array(tx.GetParameters()).T
+    # dxdydz = array(tx.GetParameters()).T
 
-    return dxdydz
+    return tx
 
+
+def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4,2,1), level_iters=(1000,1000,1000), sigmas=(8,4,1)):
+    """
+    Estimate translation between 2D or 3D images using dipy.align.
+
+    Parameters
+    ----------
+    fixed : numpy array, 2D or 3D
+        The reference image.
+
+    moving : numpy array, 2D or 3D
+        The image to be transformed.
+
+    metric_sampling : float, within the interval (0,  1]
+        Fraction of the metric sampling to use for optimization
+
+    factors : iterable
+        The image pyramid factors to use
+
+    level_iters : iterable
+        Number of iterations per pyramid level
+
+    sigmas : iterable
+        Standard deviation of gaussian blurring for each pyramid level
+
+    """
+    from dipy.align.transforms import TranslationTransform2D, TranslationTransform3D
+    from dipy.align.imaffine import AffineRegistration, MutualInformationMetric
+
+    metric = MutualInformationMetric(32, metric_sampling)
+    affreg = AffineRegistration(metric=metric, level_iters=level_iters, sigmas=sigmas, factors=factors)
+
+    if fixed.ndim == 2:
+        transform = TranslationTransform2D()
+    elif fixed.ndim == 3:
+        transform = TranslationTransform3D()
+
+    tx = affreg.optimize(fixed, moving, transform, params0=None)
+
+    return tx
 
 def estimate_translation_batch(fixed, moving):
     """
@@ -150,7 +184,23 @@ def estimate_translation_batch(fixed, moving):
     The image to be transformed.
     """
     from numpy import array
-    tx = estimate_translation_itk(fixed, moving)
+    from SimpleITK import ImageRegistrationMethod, TranslationTransform
+
+    r = sitk.ImageRegistrationMethod()
+    r.SetMetricAsMattesMutualInformation(numberOfHistogramBins=32)
+    r.SetOptimizerAsRegularStepGradientDescent(learningRate=0.1,
+                                               minStep=1e-5,
+                                               numberOfIterations=100,
+                                               gradientMagnitudeTolerance=1e-8)
+    r.SetMetricSamplingStrategy(r.REGULAR)
+    r.SetMetricSamplingPercentage(.25)
+    tx = sitk.TranslationTransform(fixed_.GetDimension())
+    r.SetInitialTransform(tx)
+    r.SetSmoothingSigmasAreSpecifiedInPhysicalUnits(False)
+    r.SetShrinkFactorsPerLevel(shrinkFactors = [8, 4, 2])
+    r.SetSmoothingSigmasPerLevel(smoothingSigmas=[3, 2, 1])
+    r.SetInterpolator(sitk.sitkLinear)
+    tx = estimate_translation_itk(fixed, moving, r)
     dxdydz = array(tx.GetParameters()).T
 
     return dxdydz
