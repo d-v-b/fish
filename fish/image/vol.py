@@ -53,7 +53,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     positions = ('bottom', 'top', 'left', 'right')
     ori = 'lower'
 
-    projs = [proj_fun(vol, axis=axis) for axis in range(vol.ndim)]
+    projs = [proj_fun(volume, axis=axis) for axis in range(vol.ndim)]
     # calculate clims if necessary
     if clims == 'auto':
         clims = [percentile(p, (0, 99.99)) for p in projs]
