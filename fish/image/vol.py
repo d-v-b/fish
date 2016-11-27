@@ -58,9 +58,9 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     if clims == 'auto':
         clims = [percentile(p, (0, 99.99)) for p in projs]
 
-    z = vol.shape[0] * aspect
-    y = vol.shape[1]
-    x = vol.shape[2]
+    z = volume.shape[0] * aspect
+    y = volume.shape[1]
+    x = volume.shape[2]
 
     w = x + z
     h = y + z
