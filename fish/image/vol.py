@@ -1,85 +1,113 @@
 """ tools for analyzing light sheet data"""
 
-def local_corr(ims, offset=[0,1,1]):    
+
+def local_corr(images, offset=[0,1,1]):
+    """
+    Correlate each image in a distributed set of images with a shifted copy of itself. Returns an rdd of
+    correlation coefficients.
+
+    images : thunder.images object
+    offset : the shift, in pixels, to apply to each image before correlation
+
+    """
     from scipy.ndimage.interpolation import shift
     
-    def correlate_signals(s1,s2):    
+    def correlate_signals(s1, s2):
         from numpy import corrcoef
-        return corrcoef(s1,s2)[0][1]
+        return corrcoef(s1, s2)[0][1]
     
-    ims_shifted = ims.map(lambda v: shift(v.astype('float32'), offset, mode='reflect')).astype('float16')
-    joined = ims.toseries().tordd().join(ims_shifted.toseries().tordd())
+    images_shifted = images.map(lambda v: shift(v.astype('float32'), offset, mode='reflect')).astype('float16')
+    joined = images.toseries().tordd().join(images_shifted.toseries().tordd())
     
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
-def proj_plot(projs, fig=None, clims='auto', fsize=15, asp=10, cmap='gray'):
+def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'):
     """
-    projPlot(projs, fig=None, clims='auto', fsize=15,asp=10.0, cmap='gray')
+    Project a volume along 3 axes using a user-supplied function
 
-    Plot max projections in 3 subplots.
+    volume : data to be projected.
+        3D numpy array
+
+    proj_fun : function to apply along each axis.
+        Some function that takes axis as an argument, e.g. np.amax()
+
+    clims : clims to use when displaying projections.
+        String or iterable with 3 elements. Default is 'auto', which means the 0th and 99.99th percentiles
+        will be used as the clims for each projection. If not auto, clims should be set to an iterable of length-2
+        iterables, each setting the clim for a projection.
+
+    figsize : size of the figure containing the plots
+        Float or int
+
+    Aspect : aspect ratio of first axis relative to second and third.
+        Float or int. We assume here that the first axis has the lowest
+        spatial sampling rate and thus that data plotted against that axis must be interpolated.
+
+    cmap : color map used in plots.
     """
 
-    import numpy as np
+    from numpy import percentile
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gspec
-    positions = ['bottom', 'top', 'left', 'right']
-
-    # calculate clims if necessary
-    if clims == 'auto':
-        clims = [np.percentile(p,[0, 99.99]) for p in projs]
-
+    positions = ('bottom', 'top', 'left', 'right')
     ori = 'lower'
 
-    x = float(projs[1].shape[0])
-    y = float(projs[0].shape[0])
-    z = float(asp*projs[0].shape[1])
+    projs = [proj_fun(vol, axis=axis) for axis in range(vol.ndim)]
+    # calculate clims if necessary
+    if clims == 'auto':
+        clims = [percentile(p, (0, 99.99)) for p in projs]
+
+    z = vol.shape[0] * aspect
+    y = vol.shape[1]
+    x = vol.shape[2]
 
     w = x + z
     h = y + z
 
-    if not fig:
-        fig = plt.figure(figsize=(fsize, fsize * h/w))
+    fig = plt.figure(figsize=(figsize, figsize * h/w))
 
     # number of subplots in x and y
-    plotsY = 2
-    plotsX = 2
+    plots_y = 2
+    plots_x = 2
 
     h_ratio = [y, z]
     w_ratio = [x, z]
 
     # prepare grid of axes for plotting
-    gs = gspec.GridSpec(plotsY, plotsX, height_ratios=h_ratio, width_ratios=w_ratio)
+    gs = gspec.GridSpec(plots_y, plots_x, height_ratios=h_ratio, width_ratios=w_ratio)
 
-    imAx = []
+    axs = []
 
-    proj_zy = projs[0]
+    proj_xy = projs[0]
     proj_zx = projs[1]
-    proj_xy = projs[2]
+    proj_zy = projs[2]
 
     # (z,y) projection
-    imAx.append(plt.subplot(gs[-3]))
-    plt.imshow(proj_zy, aspect=1/asp, origin=ori, cmap=cmap, clim=clims[0])
-    imAx[0].yaxis.set_visible(False)
-    imAx[0].yaxis.tick_right()
-    [imAx[0].spines[x].set_color('w') for x in positions]
+    axs.append(plt.subplot(gs[-3]))
+    plt.imshow(proj_zy.T, aspect=(1/aspect), origin='right', cmap=cmap, clim=clims[0])
+    axs[0].yaxis.set_visible(False)
+    axs[0].yaxis.tick_right()
+    axs[0].set_xticks(axs[0].get_xticks()[::2][1:])
+    [axs[0].spines[x].set_color('w') for x in positions]
 
     # (z,x) projection
-    imAx.append(plt.subplot(gs[-2]))
-    plt.imshow(projZX.T, aspect=asp, origin=ori, cmap=cmap, clim=clims[1])
-    [imAx[1].spines[x].set_color('w') for x in positions]
+    axs.append(plt.subplot(gs[-2]))
+    axs[1].imshow(proj_zx, aspect=aspect, origin=ori, cmap=cmap, clim=clims[1])
+    [axs[1].spines[x].set_color('w') for x in positions]
 
     # (x,y) projection
-    imAx.append(plt.subplot(gs[-4]))
-    plt.imshow(projXY.T, origin=ori, cmap=cmap, clim=clims[2])
-    [imAx[2].spines[x].set_color('w') for x in positions]
-    imAx[2].xaxis.set_visible(False)
+    axs.append(plt.subplot(gs[-4]))
+    axs[2].imshow(proj_xy, origin=ori, cmap=cmap, clim=clims[2])
+    [axs[2].spines[x].set_color('w') for x in positions]
+    axs[2].xaxis.set_visible(False)
 
     # extra 4th plot
-    imAx.append(plt.subplot(gs[-1]))
-    plt.axis('off')
+    axs.append(plt.subplot(gs[-1]))
+    axs[-1].axis('off')
+    plt.subplots_adjust(wspace=0, hspace=0)
 
-    return imAx
+    return axs
 
 
 def get_metadata(param_file):
@@ -211,6 +239,44 @@ def volume_mask(vol):
     mCoords = zip(x, y, z)
 
     return mask, mCoords
+
+
+def filter_flat(vol, mask):
+    """
+    Flatten an array and return a list of the elements at positions where the binary mask is True.
+
+    vol : ndarray
+    mask : binary ndarray or function. If a function, mask must take an ndarray as an argument and return a
+    binary mask.
+    """
+    vol_flat = vol.ravel()
+
+    # if mask is a function, call it on vol to make the mask
+    if hasattr(mask, '__call__'):
+        mask_flat = mask(vol).ravel()
+    else:
+        mask_flat = mask.ravel()
+
+    return vol_flat[mask_flat]
+
+
+def unfilter_flat(vec, mask):
+    """
+    Reverse the effect of filter_flat by taking a 1d ndarray and assigning each value to a position in an ndarray
+
+    vec : 1-dimensional ndarray
+    mask : binary ndarray
+    """
+
+    from numpy import zeros
+    """
+    Fill a binary mask with the values in vec
+    """
+    mask_flat = mask.ravel()
+    vol = zeros(mask.shape).ravel()
+    vol[mask_flat == True] = vec
+
+    return vol.reshape(mask.shape)
 
 
 def kvp_to_array(dims, data, ind=0, baseline=0):

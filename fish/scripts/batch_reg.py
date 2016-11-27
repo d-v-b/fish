@@ -1,13 +1,13 @@
 import volTools as volt
 import numpy as np
 import fileTools as ftools
-import alignment as align
+import fish.image.alignment as align
 import os
 import thunder as td
 from glob import glob
 from os.path import split
 from pyspark import SparkConf, SparkContext
-import pyklb
+from pyklb import readfull
 
 conf = SparkConf().setAppName('test_spark_batchmode')
 sc = SparkContext(conf=conf)
@@ -36,8 +36,7 @@ def get_translation(im_dir, sc):
     fnames.sort()
 
     print('Loading {0} images...'.format(len(fnames)))
-    klb_loader = lambda v: pyklb.readfull(v)
-    dat = td.images.fromlist(fnames, accessor = klb_loader, engine=sc, npartitions=len(fnames))
+    dat = td.images.fromlist(fnames, accessor=readfull, engine=sc, npartitions=len(fnames))
     print('Done loading images')
     num_frames = dat.shape[0]
     dims = dat.first().shape
@@ -51,7 +50,7 @@ def get_translation(im_dir, sc):
     print('Num frames = {0}'.format(len(fnames)))
     print('Taking reference from frames ' + str(refR[0]) + ' to ' + str(refR[-1]))
     
-    ref = td.images.fromtif(raw_dir + 'TM*.klb', start = refR[0], stop = refR[-1]).mean().toarray()
+    ref = td.images.fromtif(raw_dir + 'TM*.klb', start=refR[0], stop=refR[-1]).mean().toarray()
     
     def proj_reg_batch(fixed, moving):
         from numpy import array, max

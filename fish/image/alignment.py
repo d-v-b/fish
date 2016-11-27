@@ -108,7 +108,7 @@ def proj_reg_batch(fixed, moving):
         The reference image.
 
     moving : numpy array, 2D or 3D
-    The image to be transformed.
+        The image to be transformed.
     """
     from numpy import array, max
     from fish.image.vol import sub_proj
@@ -131,7 +131,8 @@ def proj_reg_batch(fixed, moving):
     return tx
 
 
-def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4,2,1), level_iters=(1000,1000,1000), sigmas=(8,4,1)):
+def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4, 2, 1), level_iters=(1000, 1000, 1000),
+                         sigmas=(8, 4, 1)):
     """
     Estimate translation between 2D or 3D images using dipy.align.
 
@@ -170,6 +171,7 @@ def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4,2,1), le
     tx = affreg.optimize(fixed, moving, transform, params0=None)
 
     return tx
+
 
 def estimate_translation_batch(fixed, moving):
     """
