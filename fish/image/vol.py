@@ -99,10 +99,9 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     cmap : color map used in plots.
     """
 
-
     from numpy import percentile
-    import matplotlib.pyplot as plt
-    positions = ('bottom', 'top', 'left', 'right')
+    from matplotlib.pyplot import subplots
+
     ori = 'lower'
 
     projs = [proj_fun(volume, axis=axis) for axis in range(volume.ndim)]
@@ -123,11 +122,11 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     p_zx = projs[1]
     p_zy = projs[2]
 
-    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(figsize, figsize * h/w))
+    fig, axs = subplots(nrows=2, ncols=2, figsize=(figsize, figsize * h/w))
 
-    axs[0][0].imshow(p_xy, origin=ori, aspect='auto', cmap=cmap, clim = clims[0])
+    axs[0][0].imshow(p_xy, origin=ori, aspect='auto', cmap=cmap, clim=clims[0])
     axs[1][0].imshow(p_zx, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[1])
-    axs[0][1].imshow(p_zy.T, origin=ori, aspect = 'auto', cmap=cmap, clim = clims[2])
+    axs[0][1].imshow(p_zy.T, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[2])
 
     axs[0][0].set_position([0, 1-hr, wr, hr])
     axs[0][1].set_position([wr, 1-hr, 1-wr, hr])
