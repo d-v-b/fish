@@ -74,7 +74,7 @@ def get_stack_dims(inDir):
     return dims
 
 
-def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'):
+def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1,1,1), cmap='gray', interpolation='Lanczos'):
     """
     Project a volume along 3 axes using a user-supplied function
 
@@ -92,14 +92,13 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     figsize : size of the figure containing the plots
         Float or int
 
-    aspect : aspect ratio of first axis relative to second and third.
-        Float or int. We assume here that the first axis has the lowest
-        spatial sampling rate and thus that data plotted against that axis must be interpolated.
+    aspect : aspect ratios of each axis
+        Iterable of floats or ints.
 
     cmap : color map used in plots.
     """
 
-    from numpy import percentile, r_
+    from numpy import percentile, hstack
     from matplotlib.pyplot import subplots
 
     ori = 'lower'
@@ -108,9 +107,10 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
 
     # calculate clims if necessary
     if clims == 'auto':
-        clims = percentile(r_[[p.ravel() for p in projs]], (0, 99.99))
+        clims = percentile(hstack([p.ravel() for p in projs]), (0, 99.99))
+        clims = (clims, clims, clims)
 
-    x, y, z = volume.shape[2], volume.shape[1], volume.shape[0] * aspect
+    z, y, x = volume.shape[0] * aspect[0], volume.shape[1] * aspect[1], volume.shape[2] * aspect[2]
 
     w = x + z
     h = y + z
@@ -124,9 +124,9 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
 
     fig, axs = subplots(nrows=2, ncols=2, figsize=(figsize, figsize * h/w))
 
-    axs[0][0].imshow(p_xy, origin=ori, aspect='auto', cmap=cmap, clim=clims[0])
-    axs[1][0].imshow(p_zx, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[1])
-    axs[0][1].imshow(p_zy.T, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[2])
+    axs[0][0].imshow(p_xy, origin=ori, aspect='auto', cmap=cmap, clim=clims[0], interpolation=interpolation)
+    axs[1][0].imshow(p_zx, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[1], interpolation=interpolation)
+    axs[0][1].imshow(p_zy.T, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[2], interpolation=interpolation)
 
     axs[0][0].set_position([0, 1-hr, wr, hr])
     axs[0][1].set_position([wr, 1-hr, 1-wr, hr])
