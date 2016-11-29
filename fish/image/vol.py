@@ -74,7 +74,7 @@ def get_stack_dims(inDir):
     return dims
 
 
-def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1,1,1), cmap='gray', interpolation='Lanczos'):
+def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1, 1, 1), cmap='gray', interpolation='Lanczos'):
     """
     Project a volume along 3 axes using a user-supplied function
 
@@ -85,7 +85,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1,1,1), cmap='g
         Some function that takes axis as an argument, e.g. np.amax()
 
     clims : clims to use when displaying projections.
-        String or iterable with 3 elements. Default is 'auto', which means the 0th and 99.99th percentiles
+        String or iterable with 3 elements. Default is 'auto', which means the 0th and 100th percentiles
         will be used as the clims for each projection. If not auto, clims should be set to an iterable of length-2
         iterables, each setting the clim for a projection.
 
@@ -107,7 +107,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1,1,1), cmap='g
 
     # calculate clims if necessary
     if clims == 'auto':
-        clims = percentile(hstack([p.ravel() for p in projs]), (0, 99.99))
+        clims = percentile(hstack([p.ravel() for p in projs]), (0, 100))
         clims = (clims, clims, clims)
 
     z, y, x = volume.shape[0] * aspect[0], volume.shape[1] * aspect[1], volume.shape[2] * aspect[2]
