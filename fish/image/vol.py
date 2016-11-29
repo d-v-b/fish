@@ -99,7 +99,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
     cmap : color map used in plots.
     """
 
-    from numpy import percentile
+    from numpy import percentile, r_
     from matplotlib.pyplot import subplots
 
     ori = 'lower'
@@ -108,7 +108,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'
 
     # calculate clims if necessary
     if clims == 'auto':
-        clims = [percentile(p, (0, 99.99)) for p in projs]
+        clims = percentile(r_[[p.ravel() for p in projs]], (0, 99.99))
 
     x, y, z = volume.shape[2], volume.shape[1], volume.shape[0] * aspect
 
