@@ -22,94 +22,6 @@ def local_corr(images, offset=[0,1,1]):
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
-def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'):
-    """
-    Project a volume along 3 axes using a user-supplied function
-
-    volume : data to be projected.
-        3D numpy array
-
-    proj_fun : function to apply along each axis.
-        Some function that takes axis as an argument, e.g. np.amax()
-
-    clims : clims to use when displaying projections.
-        String or iterable with 3 elements. Default is 'auto', which means the 0th and 99.99th percentiles
-        will be used as the clims for each projection. If not auto, clims should be set to an iterable of length-2
-        iterables, each setting the clim for a projection.
-
-    figsize : size of the figure containing the plots
-        Float or int
-
-    Aspect : aspect ratio of first axis relative to second and third.
-        Float or int. We assume here that the first axis has the lowest
-        spatial sampling rate and thus that data plotted against that axis must be interpolated.
-
-    cmap : color map used in plots.
-    """
-
-    from numpy import percentile
-    import matplotlib.pyplot as plt
-    import matplotlib.gridspec as gspec
-    positions = ('bottom', 'top', 'left', 'right')
-    ori = 'lower'
-
-    projs = [proj_fun(vol, axis=axis) for axis in range(vol.ndim)]
-    # calculate clims if necessary
-    if clims == 'auto':
-        clims = [percentile(p, (0, 99.99)) for p in projs]
-
-    z = vol.shape[0] * aspect
-    y = vol.shape[1]
-    x = vol.shape[2]
-
-    w = x + z
-    h = y + z
-
-    fig = plt.figure(figsize=(figsize, figsize * h/w))
-
-    # number of subplots in x and y
-    plots_y = 2
-    plots_x = 2
-
-    h_ratio = [y, z]
-    w_ratio = [x, z]
-
-    # prepare grid of axes for plotting
-    gs = gspec.GridSpec(plots_y, plots_x, height_ratios=h_ratio, width_ratios=w_ratio)
-
-    axs = []
-
-    proj_xy = projs[0]
-    proj_zx = projs[1]
-    proj_zy = projs[2]
-
-    # (z,y) projection
-    axs.append(plt.subplot(gs[-3]))
-    plt.imshow(proj_zy.T, aspect=(1/aspect), origin='right', cmap=cmap, clim=clims[0])
-    axs[0].yaxis.set_visible(False)
-    axs[0].yaxis.tick_right()
-    axs[0].set_xticks(axs[0].get_xticks()[::2][1:])
-    [axs[0].spines[x].set_color('w') for x in positions]
-
-    # (z,x) projection
-    axs.append(plt.subplot(gs[-2]))
-    axs[1].imshow(proj_zx, aspect=aspect, origin=ori, cmap=cmap, clim=clims[1])
-    [axs[1].spines[x].set_color('w') for x in positions]
-
-    # (x,y) projection
-    axs.append(plt.subplot(gs[-4]))
-    axs[2].imshow(proj_xy, origin=ori, cmap=cmap, clim=clims[2])
-    [axs[2].spines[x].set_color('w') for x in positions]
-    axs[2].xaxis.set_visible(False)
-
-    # extra 4th plot
-    axs.append(plt.subplot(gs[-1]))
-    axs[-1].axis('off')
-    plt.subplots_adjust(wspace=0, hspace=0)
-
-    return axs
-
-
 def get_metadata(param_file):
     """
     Parse imaging metadata file, returning a dictionary of imaging parameters
@@ -144,7 +56,7 @@ def get_stack_dims(inDir):
     """
     import xml.etree.ElementTree as ET
     from os.path import split
-    
+
     channel = 0
     if split(split(inDir)[0])[1] == 'CHN01':
         channel = 1
@@ -160,6 +72,70 @@ def get_stack_dims(inDir):
     dims = [int(float(num)) for num in dims]
 
     return dims
+
+
+def proj_plot(volume, proj_fun, clims='auto', figsize=15, aspect=10, cmap='gray'):
+    """
+    Project a volume along 3 axes using a user-supplied function
+
+    volume : data to be projected.
+        3D numpy array
+
+    proj_fun : function to apply along each axis.
+        Some function that takes axis as an argument, e.g. np.amax()
+
+    clims : clims to use when displaying projections.
+        String or iterable with 3 elements. Default is 'auto', which means the 0th and 99.99th percentiles
+        will be used as the clims for each projection. If not auto, clims should be set to an iterable of length-2
+        iterables, each setting the clim for a projection.
+
+    figsize : size of the figure containing the plots
+        Float or int
+
+    aspect : aspect ratio of first axis relative to second and third.
+        Float or int. We assume here that the first axis has the lowest
+        spatial sampling rate and thus that data plotted against that axis must be interpolated.
+
+    cmap : color map used in plots.
+    """
+
+
+    from numpy import percentile
+    import matplotlib.pyplot as plt
+    positions = ('bottom', 'top', 'left', 'right')
+    ori = 'lower'
+
+    projs = [proj_fun(volume, axis=axis) for axis in range(volume.ndim)]
+
+    # calculate clims if necessary
+    if clims == 'auto':
+        clims = [percentile(p, (0, 99.99)) for p in projs]
+
+    x, y, z = volume.shape[2], volume.shape[1], volume.shape[0] * aspect
+
+    w = x + z
+    h = y + z
+
+    wr = x / w
+    hr = y / h
+
+    p_xy = projs[0]
+    p_zx = projs[1]
+    p_zy = projs[2]
+
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(figsize, figsize * h/w))
+
+    axs[0][0].imshow(p_xy, origin=ori, aspect='auto', cmap=cmap, clim = clims[0])
+    axs[1][0].imshow(p_zx, origin=ori, aspect = 'auto', cmap=cmap, clim=clims[1])
+    axs[0][1].imshow(p_zy.T, origin=ori, aspect = 'auto', cmap=cmap, clim = clims[2])
+
+    axs[0][0].set_position([0, 1-hr, wr, hr])
+    axs[0][1].set_position([wr, 1-hr, 1-wr, hr])
+    axs[1][0].set_position([0, 0, wr, 1-hr])
+    axs[1][1].set_position([wr, 0, 1-wr, 1-hr])
+    [ax.axis('off') for ax in axs.ravel()]
+
+    return axs
 
 
 def get_stack_freq(inDir):
