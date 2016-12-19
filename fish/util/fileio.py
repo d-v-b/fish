@@ -59,7 +59,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
     dest_path = source_name + '.' + dest_fmt
 
     def stack_loader(stack_path):
-        from ..image import vol as volt
+        from fish.image import vol as volt
         from numpy import fromfile
         from os.path import sep, split
         dims = volt.get_stack_dims(split(stack_path)[0] + sep)
