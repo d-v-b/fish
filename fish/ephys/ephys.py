@@ -71,7 +71,7 @@ def estimate_swims(signal):
     # set dead time, in samples
     dead_time = 80
     
-    fltch = windowed_variance(signal)
+    fltch = windowed_variance(signal)[0]
     peaksT, peaksIndT = estimate_peaks(fltch, dead_time)
     thr = estimate_threshold(fltch, 2600000)
     burstIndT = peaksIndT[where(fltch[peaksIndT] > thr[peaksIndT])]
