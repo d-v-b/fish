@@ -276,13 +276,15 @@ def kvp_to_array(dims, data, ind=0, baseline=0):
     return vol
 
 
-def sub_proj(im, ax, chop=16):
+def sub_proj(im, ax, func, chop=16):
     """
-    Max project a volume in chunks along an axis.
+    Project a volume in chunks along an axis.
 
     im : numpy array, data to be projected
 
     ax : int, axis to project along
+
+    func : function that takes an axis as an argument, e.g. np.max
 
     chop : int, number of projections to generate
 
@@ -302,7 +304,8 @@ def sub_proj(im, ax, chop=16):
 
     slices_keep = [slice(None) for x in im.shape]
     slices_keep[ax] = slice(extra, None)
-    im_proj = im[slices_keep].reshape(montage_dims).max(ax + 1)
+
+    im_proj = func(im[slices_keep].reshape(montage_dims), axis=ax + 1)
     # stick the axis of projections in the front
     im_proj = rollaxis(im_proj, ax, 0)
 
