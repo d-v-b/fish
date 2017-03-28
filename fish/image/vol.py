@@ -58,13 +58,16 @@ def get_stack_dims(inDir):
     :return: dims, a list of integers representing the xyz dimensions of the data
     """
     import xml.etree.ElementTree as ET
+    from lxml import etree
     from os.path import split
 
+    parser = etree.XMLParser(recover=True)
+    
     channel = 0
     if split(split(inDir)[0])[1] == 'CHN01':
         channel = 1
 
-    dims = ET.parse(inDir + 'ch' + str(channel) + '.xml')
+    dims = ET.parse(inDir + 'ch' + str(channel) + '.xml', parser=parser)
     root = dims.getroot()
 
     for info in root.findall('info'):
