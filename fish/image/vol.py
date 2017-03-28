@@ -30,10 +30,13 @@ def get_metadata(param_file):
     """
 
     import xml.etree.ElementTree as ET
+    from lxml import etree
     from numpy import array
 
+    parser = etree.XMLParser(recover=True)
+
     exp_dict = {}
-    root = ET.parse(param_file).getroot()
+    root = ET.parse(param_file, parser=parser).getroot()
 
     for r in root.findall('info'):
         exp_dict[r.keys()[0]] = r.items()[0][1]
@@ -172,11 +175,14 @@ def get_stack_data(raw_path, frameNo=0):
             print('No .xml files found!')
 
     dims = get_metadata(param_files[0])['dimensions']
-    fName = Template('TM${x}_CM0_CHN${y}.stack')
-    nDigits_frame = 5
-    nDigits_channel = 2
-    tmpFName = fName.substitute(x=str(frameNo).zfill(nDigits_frame), y=str(channel).zfill(nDigits_channel))
-    im = fromfile(raw_path + tmpFName, dtype='int16')
+    #fName = Template('TM${x}_CM0_CHN${y}.stack')
+    #nDigits_frame = 5
+    #nDigits_channel = 2
+    #tmpFName = fName.substitute(x=str(frameNo).zfill(nDigits_frame), y=str(channel).zfill(nDigits_channel))
+    #im = fromfile(raw_path + tmpFName, dtype='int16')
+    fnames = glob(raw_path + '*.stack')
+    fnames.sort()
+    im = fromfile(fnames[frameNo], dtype='int16')
     im = im.reshape(dims[-1::-1])
     return im
 
