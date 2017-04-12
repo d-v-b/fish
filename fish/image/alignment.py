@@ -161,7 +161,7 @@ def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4, 2, 1), 
     from dipy.align.imaffine import AffineRegistration, MutualInformationMetric
 
     metric = MutualInformationMetric(32, metric_sampling)
-    affreg = AffineRegistration(metric=metric, level_iters=level_iters, sigmas=sigmas, factors=factors)
+    affreg = AffineRegistration(metric=metric, level_iters=level_iters, sigmas=sigmas, factors=factors, verbosity=0)
 
     if fixed.ndim == 2:
         transform = TranslationTransform2D()
