@@ -62,88 +62,141 @@ def estimate_onset(signal, threshold, duration):
     return inits
 
 
-def estimate_swims(signal):
+def estimate_swims(power, fs=6000):
     """ Estimate swim timing from ephys recording of motor neurons
+
+    Parameters
+    __________
+
+    signal : numpy array, 1 dimensional
+
+    fs : int
+        sampling rate of the data
+
     """
-    
+
     from numpy import zeros, where, diff, concatenate
 
-    # set dead time, in samples
-    dead_time = 80
-    
-    fltch = windowed_variance(signal)[0]
-    peaksT, peaksIndT = estimate_peaks(fltch, dead_time)
-    thr = estimate_threshold(fltch, 2600000)
-    burstIndT = peaksIndT[where(fltch[peaksIndT] > thr[peaksIndT])]
-    burstT = zeros(fltch.shape)
+    # set dead time between peaks, in seconds
+    dead_time = .010 * fs
+
+    # set minimum distance between swim bursts in seconds
+    inter_swim_min = .12 * fs
+
+    # estimate swim threshold
+    thr = estimate_threshold(power, fs * 60)
+
+    peaksT, peaksIndT = estimate_peaks(power, dead_time)
+
+    burstIndT = peaksIndT[where(power[peaksIndT] > thr[peaksIndT])]
+    burstT = zeros(power.shape)
     burstT[burstIndT] = 1
-    
+
     interSwims = diff(burstIndT)
-    swimEndIndB = where(interSwims > 800)[0]
+    swimEndIndB = where(interSwims > inter_swim_min)[0]
     swimEndIndB = concatenate((swimEndIndB, [burstIndT.size-1]))
 
-    swimStartIndB = swimEndIndB[0:-1] + 1
+    swimStartIndB = swimEndIndB[:-1] + 1
     swimStartIndB = concatenate(([0], swimStartIndB))
     nonShort = where(swimEndIndB != swimStartIndB)[0]
     swimStartIndB = swimStartIndB[nonShort]
     swimEndIndB = swimEndIndB[nonShort]
 
-    bursts = zeros(fltch.size)
-    starts = zeros(fltch.size)
-    stops = zeros(fltch.size)
+    bursts = zeros(power.size)
+    starts = zeros(power.size)
+    stops = zeros(power.size)
     bursts[burstIndT] = 1
     starts[burstIndT[swimStartIndB]] = 1
     stops[burstIndT[swimEndIndB]] = 1
-    
+
     return starts, stops, thr
 
 
-def windowed_variance(signal, kern_mean=None, kern_var=None):
+def windowed_variance(signal, kern_mean=None, kern_var=None, fs=6000):
     """
     Estimate smoothed sliding variance of the input signal
-    :param signal:
-    :param kern_mean:
-    :param kern_var:
+
+    signal : numpy array
+
+    kern_mean : numpy array
+        kernel to use for estimating baseline
+
+    kern_var : numpy array
+        kernel to use for estimating variance
+
+    fs : int
+        sampling rate of the data
     """
     from scipy.signal import gaussian, fftconvolve
 
+    # set the width of the kernels to use for smoothing
+    kw = int(.04 * fs)
+
     if kern_mean is None:
-        kern_mean = gaussian(221, 20)
+        kern_mean = gaussian(kw, kw // 10)
         kern_mean /= kern_mean.sum()
 
     if kern_var is None:
-        kern_var = gaussian(221, 20)
+        kern_var = gaussian(kw, kw // 10)
         kern_var /= kern_var.sum()
 
     mean_estimate = fftconvolve(signal, kern_mean, 'same')
-    var_estimate = (signal - mean_estimate)**2
+    var_estimate = (signal - mean_estimate) ** 2
     fltch = fftconvolve(var_estimate, kern_var, 'same')
 
     return fltch, var_estimate, mean_estimate
 
 
-def estimate_peaks(fltch, deadTime=80):
+def estimate_peaks(signal, dead_time):
+    """
+    Estimate peak times in a signal, with a minimum distance between estimated peaks.
+
+    Parameters
+    __________
+
+    signal : numpy array, 1-dimensional
+
+    dead_time : int
+        minimum number of sample between estimated peaks
+
+    """
 
     from numpy import diff, where, zeros
 
-    aa = diff(fltch)
-    peaks = (aa[0:-1] > 0) * (aa[1:] < 0)
+    aa = diff(signal)
+    peaks = (aa[:-1] > 0) * (aa[1:] < 0)
     inds = where(peaks)[0]
 
     # take the difference between consecutive indices
-    dInds = diff(inds)
+    d_inds = diff(inds)
                     
     # find differences greater than deadtime
-    toKeep = (dInds > deadTime)    
+    to_keep = (d_inds > dead_time)
     
     # only keep the indices corresponding to differences greater than deadT 
-    inds[1::] = inds[1::] * toKeep
+    inds[1:] = inds[1:] * to_keep
     inds = inds[inds.nonzero()]
     
-    peaks = zeros(fltch.size)
+    peaks = zeros(signal.shape[0])
     peaks[inds] = 1
     
     return peaks, inds
+
+
+def load(in_file, num_channels=10):
+    """Load multichannel binary data from disk, return as a [channels,samples] sized numpy array
+    """
+    from numpy import fromfile, float32
+
+    fd = open(in_file, 'rb')
+    data = fromfile(file=fd, dtype=float32)
+    trim = data.size % num_channels
+    # transpose to make dimensions [channels, time]
+    data = data[:(data.size - trim)].reshape(data.size // num_channels, num_channels).T
+    if trim > 0:
+        print('Data needed to be truncated!')
+
+    return data
 
 
 def estimate_threshold(signal, window=180000, scaling=1.6, lower_percentile=.01):
@@ -177,19 +230,3 @@ def estimate_threshold(signal, window=180000, scaling=1.6, lower_percentile=.01)
         th[t:] = (med + scaling * (med - bottom))
 
     return th
-
-
-def load(in_file, num_channels=10):
-    """Load multichannel binary data from disk, return as a [channels,samples] sized numpy array
-    """
-    from numpy import fromfile, float32
-
-    fd = open(in_file, 'rb')
-    data = fromfile(file=fd, dtype=float32)
-    trim = data.size % num_channels
-    # transpose to make dimensions [channels, time]
-    data = data[:(data.size - trim)].reshape(data.size // num_channels, num_channels).T
-    if trim > 0:
-        print('Data needed to be truncated!')
-
-    return data
