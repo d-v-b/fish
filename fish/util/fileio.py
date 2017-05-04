@@ -1,3 +1,46 @@
+
+
+def load_image(fname):
+    """
+    Load .stack, .tif, .klb, or .h5 data and return as a numpy array
+
+    fname : string, path to image file
+
+    """
+
+    def stack_loader(stack_path):
+        from fish.image import vol as volt
+        from numpy import fromfile
+        from os.path import sep, split
+        dims = volt.get_stack_dims(split(stack_path)[0] + sep)
+        im = fromfile(stack_path, dtype='int16')
+        im = im.reshape(dims[-1::-1])
+        return im
+
+    def tif_loader(tif_path):
+        from skimage.io import imread
+        return imread(tif_path)
+
+    def klb_loader(klb_path):
+        from pyklb import readfull
+        return readfull(klb_path)
+
+    def h5_loader(h5_path):
+        from h5py import File
+        with File(h5_path, 'r') as f:
+            return f['default'].value
+
+    fmt = fname.split('.')[-1]
+
+    loaders = dict()
+    loaders['stack'] = stack_loader
+    loaders['tif'] = tif_loader
+    loaders['klb'] = klb_loader
+    loaders['h5'] = h5_loader
+
+    return loaders[fmt](fname)
+
+# todo: use the image loaders from load_image inside this function
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
     Convert uint16 image from .stack or .tif format to .klb/hdf5 format, optionally erasing the source image
@@ -33,7 +76,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
         from pyklb import writefull
         writefull(data, klb_path)
 
-    def klb_reader(klb_path):
+    def klb_loader(klb_path):
         from pyklb import readfull
         return readfull(klb_path)
 
@@ -48,7 +91,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
         f.create_dataset('default', data=data, compression='gzip', chunks=True, shuffle=True)
         f.close()
 
-    def h5_reader(h5_path):
+    def h5_loader(h5_path):
         from h5py import File
         with File(h5_path, 'r') as f:
             return f['default'].value
