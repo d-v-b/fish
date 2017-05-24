@@ -178,26 +178,37 @@ def get_stack_data(raw_path, frameNo=0):
             print('No .xml files found!')
 
     dims = get_metadata(param_files[0])['dimensions']
-    #fName = Template('TM${x}_CM0_CHN${y}.stack')
-    #nDigits_frame = 5
-    #nDigits_channel = 2
-    #tmpFName = fName.substitute(x=str(frameNo).zfill(nDigits_frame), y=str(channel).zfill(nDigits_channel))
-    #im = fromfile(raw_path + tmpFName, dtype='int16')
     fnames = glob(raw_path + '*.stack')
     fnames.sort()
     im = fromfile(fnames[frameNo], dtype='int16')
     im = im.reshape(dims[-1::-1])
     return im
 
-
-def vid_embed(fname, mimetype):
-    """Load the video in the file `fname`, with given mimetype, and display as HTML5 video.
-    Credit: Fernando Perez
+def rearrange_bidirectional_stack(stack_data):
     """
-    from IPython.display import HTML
-    video_encoded = open(fname, "rb").read().encode("base64")
-    video_tag = '<video controls alt="test" src="data:video/{0};base64,{1}">'.format(mimetype, video_encoded)
-    return HTML(data=video_tag)
+    Re-arrange the z planes in data that were acquired bidirectionally. Convert from temporal order to spatial order.
+    For stacks with and even number ofplanes, the odd numbered planes are acquired first, and vice versa.
+    For example, a stack with 8 total planes with be acquired in this order: 1,3, 5. 7, 6, 4, 2, 0
+
+    stack_data: 3-dimensional numpy array
+
+    returns a 3-dimensional numpy array with the same values as stack_data but re-arranged.
+    """
+
+    from numpy import zeros
+    z = stack_data.shape[0]
+    z_range_old = range(z)
+    z_range_new = zeros(z, dtype='int')
+
+    if (z % 2) == 0:
+        z_range_new[1::2] = z_range_old[:z//2]
+        z_range_new[0::2] = z_range_old[z//2:][::-1]
+        return stack_data[z_range_new]
+    else:
+        z_range_new[0::2] = z_range_old[:z//2]
+        z_range_new[1::2] = z_range_old[z//2:][::-1]
+        return stack_data[z_range_new]
+
 
 
 def volume_mask(vol):

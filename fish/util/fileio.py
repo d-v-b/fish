@@ -40,6 +40,7 @@ def load_image(fname):
 
     return loaders[fmt](fname)
 
+
 # todo: use the image loaders from load_image inside this function
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
