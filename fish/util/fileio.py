@@ -85,7 +85,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
     dest_writer(source_image, dest_path)
 
     if wipe:
-        check_image = dest_reader(dest_path)
+        check_image = load_image(dest_path)
         if array_equal(check_image, source_image):
             remove(source_path)
         else:
