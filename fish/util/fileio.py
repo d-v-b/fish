@@ -81,7 +81,7 @@ def image_conversion(source_path, dest_fmt, wipe=False):
     elif dest_fmt == 'h5':
         dest_writer = h5_writer
 
-    source_image = load_image(source_name)
+    source_image = load_image(source_path)
     dest_writer(source_image, dest_path)
 
     if wipe:
