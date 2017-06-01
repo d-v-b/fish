@@ -41,25 +41,10 @@ def estimate_onset(signal, threshold, duration):
         Minimum distance between consecutive onsets.
 
     """
-
     from numpy import where, diff, concatenate
-
-    # find indices where the signal is above threshold
-    inits = where(signal > threshold)[0]
-
-    # find indices where the threshold crossings are non-consecutive
-    init_diffs = where(diff(inits) > 1)[0] + 1
-
-    # add a 0 to count the first threshold crossing
-    init_diffs = concatenate(([0], init_diffs))
-
-    # index the threshold crossing indices with the non-consecutive indices
-    inits = inits[init_diffs]
-
-    keepers = concatenate((where(diff(inits) > duration)[0] + 1, [inits.size-1]))
-    inits = inits[keepers]
-    
-    return inits
+    inits = where((signal[:-1] < threshold) * (signal[1:] > threshold))[0]
+    valid = concatenate([[0], where(diff(inits) > duration)[0]])
+    return inits[valid+1]
 
 
 def estimate_swims(power, fs=6000):
