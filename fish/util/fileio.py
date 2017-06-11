@@ -23,7 +23,8 @@ def load_image(fname):
 
     def klb_loader(klb_path):
         from pyklb import readfull
-        return readfull(klb_path)
+        # pyklb whines if it doesn't get a python string
+        return readfull(str(klb_path))
 
     def h5_loader(h5_path):
         from h5py import File
@@ -41,7 +42,6 @@ def load_image(fname):
     return loaders[fmt](fname)
 
 
-# todo: use the image loaders from load_image inside this function
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
     Convert uint16 image from .stack or .tif format to .klb/hdf5 format, optionally erasing the source image
