@@ -184,29 +184,31 @@ def get_stack_data(raw_path, frameNo=0):
     im = im.reshape(dims[-1::-1])
     return im
 
+
 def rearrange_bidirectional_stack(stack_data):
     """
     Re-arrange the z planes in data that were acquired bidirectionally. Convert from temporal order to spatial order.
-    For stacks with and even number ofplanes, the odd numbered planes are acquired first, and vice versa.
-    For example, a stack with 8 total planes with be acquired in this order: 1,3, 5. 7, 6, 4, 2, 0
+    For stacks with an even number of planes, the odd-numbered planes are acquired first, and vice versa.
+    For example, a stack with 8 total planes with be acquired in this order: 1, 3, 5. 7, 6, 4, 2, 0
 
     stack_data: 3-dimensional numpy array
 
     returns a 3-dimensional numpy array with the same values as stack_data but re-arranged.
     """
 
-    from numpy import zeros
+    from numpy import zeros, ceil
     z = stack_data.shape[0]
+    midpoint = int(ceil(z / 2))
     z_range_old = range(z)
     z_range_new = zeros(z, dtype='int')
 
     if (z % 2) == 0:
-        z_range_new[1::2] = z_range_old[:z//2]
-        z_range_new[0::2] = z_range_old[z//2:][::-1]
+        z_range_new[1::2] = z_range_old[:midpoint]
+        z_range_new[0::2] = z_range_old[midpoint:][::-1]
         return stack_data[z_range_new]
     else:
-        z_range_new[0::2] = z_range_old[:z//2]
-        z_range_new[1::2] = z_range_old[z//2:][::-1]
+        z_range_new[0::2] = z_range_old[:midpoint]
+        z_range_new[1::2] = z_range_old[midpoint:][::-1]
         return stack_data[z_range_new]
 
 
