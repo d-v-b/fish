@@ -47,13 +47,13 @@ def estimate_onset(signal, threshold, duration):
     return inits[valid] + 1
 
 
-def estimate_swims(power, fs=6000):
+def estimate_swims(signal, fs=6000):
     """ Estimate swim timing from ephys recording of motor neurons
 
     Parameters
     __________
 
-    signal : numpy array, 1 dimensional
+    signal : numpy array, 1 dimensional. Windowed variance of ephys signal.
 
     fs : int
         sampling rate of the data
@@ -69,9 +69,9 @@ def estimate_swims(power, fs=6000):
     inter_swim_min = .12 * fs
 
     # estimate swim threshold
-    thr = estimate_threshold(power, fs * 60)
+    thr = estimate_threshold(signal, fs * 60)
 
-    peaksT, peaksIndT = estimate_peaks(power, dead_time)
+    peaksT, peaksIndT = estimate_peaks(signal, dead_time)
 
     burstIndT = peaksIndT[where(power[peaksIndT] > thr[peaksIndT])]
     burstT = zeros(power.shape)

@@ -22,6 +22,49 @@ def local_corr(images, offset=[0,1,1]):
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
+def dff(data, window, percentile, baseline_offset, downsample=1):
+    """
+    Estimate normalized change in fluorescence (dff) with the option to estimate baseline on downsampled data.
+    Returns a vector with the same size as the input.
+
+    If downsampling is required, the input data will be downsampled using scipy.signal.decimate before baseline
+    is estimated with a percentile filter. The baseline is then linearly interpolated to match the size of data.
+
+    data : 1D numpy array
+        Data to be processed
+
+    window : int
+        Window size for baseline estimation. If downsampling is used, window will shrink proportionally
+
+    percentile : int
+        Percentile of data used as baseline
+
+    baseline_offset : float or int
+        Value added to baseline before normalization, to prevent division-by-zero issues.
+
+    downsample : int
+        Rate of downsampling used before estimating baseline. Defaults to 1 (no downsampling).
+    """
+
+    from scipy.signal import decimate
+    from scipy.ndimage.filters import percentile_filter
+    from numpy import interp
+
+    if downsample == 1:
+        baseline = percentile_filter(data, percentile=percentile, size=window)
+
+    else:
+        data_ds = decimate(data, downsample, ftype='iir', zero_phase=True)
+        # using decimate with the default filter shifts the output by ~1-2% relative to the input.
+        # correct for baseline shift by adding a small constant to data_ds
+        data_ds += data.min() - data_ds.min()
+        baseline_ds = percentile_filter(data_ds, percentile=percentile, size=window // downsample)
+
+        baseline = interp(range(0, len(data)), range(0, len(data), downsample), baseline_ds)
+
+    return (data - baseline) / (baseline + baseline_offset)
+
+
 def get_metadata(param_file):
     """
     Parse imaging metadata file, returning a dictionary of imaging parameters
