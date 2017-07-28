@@ -21,7 +21,7 @@ def local_corr(images, offset=[0,1,1]):
     
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
-
+# todo: make this function work for NDarrays
 def dff(data, window, percentile, baseline_offset, downsample=1):
     """
     Estimate normalized change in fluorescence (dff) with the option to estimate baseline on downsampled data.
