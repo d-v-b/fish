@@ -57,7 +57,7 @@ def load_images(fnames, parallelism=None):
     # Get the file format of the images
     fmt = fnames[0].split('.')[-1]
     if parallelism is None:
-        return array([loaders[fmt](fn) for fn in fnames])
+        result = array([loaders[fmt](fn) for fn in fnames])
 
     else:
         if isinstance(parallelism, int):
@@ -70,7 +70,7 @@ def load_images(fnames, parallelism=None):
             with Pool(num_cores) as pool:
                 result = array(pool.map(loaders[fmt], fnames))
 
-            return result
+    return result
 
 
 def image_conversion(source_path, dest_fmt, wipe=False):
