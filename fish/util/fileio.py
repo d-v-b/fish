@@ -1,4 +1,36 @@
 
+def _tif_loader(tif_path):
+    from skimage.io import imread
+    return imread(tif_path)
+
+
+def _stack_loader(stack_path):
+    from fish.image import vol as volt
+    from numpy import fromfile
+    from os.path import sep, split
+    dims = volt.get_stack_dims(split(stack_path)[0] + sep)
+    im = fromfile(stack_path, dtype='int16')
+    im = im.reshape(dims[-1::-1])
+    return im
+
+
+def _klb_loader(klb_path):
+    from pyklb import readfull
+    # pyklb whines if it doesn't get a python string
+    return readfull(str(klb_path))
+
+
+def _h5_loader(h5_path):
+    from h5py import File
+    with File(h5_path, 'r') as f:
+        return f['default'].value
+
+loaders = dict()
+loaders['stack'] = _stack_loader
+loaders['tif'] = _tif_loader
+loaders['klb'] = _klb_loader
+loaders['h5'] = _h5_loader
+
 
 def load_image(fname):
     """
@@ -7,39 +39,38 @@ def load_image(fname):
     fname : string, path to image file
 
     """
-
-    def stack_loader(stack_path):
-        from fish.image import vol as volt
-        from numpy import fromfile
-        from os.path import sep, split
-        dims = volt.get_stack_dims(split(stack_path)[0] + sep)
-        im = fromfile(stack_path, dtype='int16')
-        im = im.reshape(dims[-1::-1])
-        return im
-
-    def tif_loader(tif_path):
-        from skimage.io import imread
-        return imread(tif_path)
-
-    def klb_loader(klb_path):
-        from pyklb import readfull
-        # pyklb whines if it doesn't get a python string
-        return readfull(str(klb_path))
-
-    def h5_loader(h5_path):
-        from h5py import File
-        with File(h5_path, 'r') as f:
-            return f['default'].value
     # Get the file extension for this file, assuming it is the last continuous string after the last period
     fmt = fname.split('.')[-1]
-
-    loaders = dict()
-    loaders['stack'] = stack_loader
-    loaders['tif'] = tif_loader
-    loaders['klb'] = klb_loader
-    loaders['h5'] = h5_loader
-
     return loaders[fmt](fname)
+
+
+def load_images(fnames, parallelism=None):
+    """
+    Load a sequence of images
+
+    fnames : iterable of file paths
+
+    parallelism : None if no parallelism, an int to indicate the number of processes to use, -1 means use all
+    """
+    from numpy import array
+
+    # Get the file format of the images
+    fmt = fnames[0].split('.')[-1]
+    if parallelism is None:
+        return array([loaders[fmt](fn) for fn in fnames])
+
+    else:
+        if isinstance(parallelism, int):
+            from multiprocessing import Pool, cpu_count
+            if parallelism == -1:
+                num_cores = cpu_count()
+            else:
+                num_cores = parallelism
+
+            with Pool(num_cores) as pool:
+                result = array(pool.map(loaders[fmt], fnames))
+
+            return result
 
 
 def image_conversion(source_path, dest_fmt, wipe=False):
