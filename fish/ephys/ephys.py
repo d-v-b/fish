@@ -44,7 +44,7 @@ def estimate_onset(signal, threshold, duration):
     from numpy import where, diff, concatenate
     inits = 1 + where((signal[:-1] < threshold) * (signal[1:] > threshold))[0]
     valid = concatenate([[0], 1 + where(diff(inits) > duration)[0]])
-    return inits[valid] 
+    return inits[valid]
 
 
 def estimate_swims(signal, fs=6000):
