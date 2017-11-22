@@ -168,13 +168,16 @@ def estimate_peaks(signal, dead_time):
     return peaks, inds
 
 
-def load(in_file, num_channels=10):
+def load(in_file, num_channels=10, memmap=False):
     """Load multichannel binary data from disk, return as a [channels,samples] sized numpy array
     """
     from numpy import fromfile, float32
-
-    fd = open(in_file, 'rb')
-    data = fromfile(file=fd, dtype=float32)
+    if memmap:
+        from numpy import memmap
+        data = memmap(in_file, dtype=float32)
+    else:
+        with open(in_file, 'rb') as fd:
+            data = fromfile(file=fd, dtype=float32)
     trim = data.size % num_channels
     # transpose to make dimensions [channels, time]
     data = data[:(data.size - trim)].reshape(data.size // num_channels, num_channels).T
