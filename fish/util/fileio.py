@@ -1,4 +1,6 @@
 
+
+# define loaders for images
 def _tif_loader(tif_path):
     from skimage.io import imread
     return imread(tif_path)
@@ -65,14 +67,14 @@ def load_images(fnames, parallelism=None):
             if parallelism == -1:
                 num_cores = cpu_count()
             else:
-                num_cores = parallelism
+                num_cores = min(parallelism, cpu_count())
 
             with Pool(num_cores) as pool:
                 result = array(pool.map(loaders[fmt], fnames))
 
     return result
 
-
+#todo: refactor this using the same style as the _writers
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
     Convert uint16 image from .stack or .tif format to .klb/hdf5 format, optionally erasing the source image
