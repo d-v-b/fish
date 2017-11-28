@@ -92,9 +92,10 @@ def proj_fuse(data, fun, aspect=(1,1,1), fill_value=0):
     projs = []
 
     for axis, dim in enumerate(new_dims):
-        indexer = [True] * len(new_dims)
-        indexer[axis] = False
+        indexer = list(range(len(new_dims)))
+        indexer.pop(axis)
         projs.append(resize(fun(data, axis), new_dims[indexer], mode='constant', preserve_range=True))
+
 
     stretched[:new_dims[1], new_dims[2]:] = projs[2].T
     stretched[new_dims[1]:, :new_dims[2]] = projs[1]
