@@ -54,7 +54,7 @@ def dff(data, window, percentile, baseline_offset, downsample=1):
         baseline = percentile_filter(data, percentile=percentile, size=window)
 
     else:
-        data_ds = decimate(data, downsample, ftype='iir', zero_phase=True)
+        data_ds = decimate(data, downsample, ftype='fir', zero_phase=True)
         # using decimate with the default filter shifts the output by ~1-2% relative to the input.
         # correct for baseline shift by adding a small constant to data_ds
         data_ds += data.min() - data_ds.min()
