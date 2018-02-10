@@ -64,7 +64,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1, 1, 1), cmap=
     return axs
 
 
-def proj_fuse(data, fun, aspect=(1,1,1), fill_value=0):
+def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0):
     """
     Project a volume along 3 axes using a user-supplied function, returning a 2D composite of projections. If the input
     array has the shape [z,y,x], the output shape will be: [z * aspect_z + y * aspect + y, z * aspect_z + x * aspect_x]
