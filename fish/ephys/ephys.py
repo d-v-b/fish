@@ -6,6 +6,9 @@
 #
 # Davis Bennett
 # davis.v.bennett@gmail.com
+#
+# License: MIT
+#
 
 
 def chop_trials(signal, thr=2000):

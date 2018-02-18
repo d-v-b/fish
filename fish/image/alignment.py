@@ -1,5 +1,14 @@
-""" Tools for estimating transformations between images
-"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#
+#  Tools for estimating transformations between images
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
+#
+# License: MIT
+#
 
 
 def estimate_transform_itk(fixed, moving, transformer):

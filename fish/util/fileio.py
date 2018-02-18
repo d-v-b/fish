@@ -1,6 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
+#
+#  Tools for reading and writing images
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
+#
+# License: MIT
+#
 
-# define readers and writers for images
 
 def _tif_reader(tif_path):
     from skimage.io import imread
@@ -123,7 +132,7 @@ def read_images(fnames, parallelism=None):
 
     return result
 
-#todo: refactor this using the same style as the _writers
+
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
     Convert image from one format to another, optionally erasing the source image

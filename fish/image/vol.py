@@ -1,4 +1,14 @@
-""" tools for analyzing light sheet data"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#
+#  Tools for analyzing light sheet microscopy data
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
+#
+# License: MIT
+#
 
 
 def local_corr(images, offset=[0,1,1]):
@@ -20,6 +30,7 @@ def local_corr(images, offset=[0,1,1]):
     joined = images.toseries().tordd().join(images_shifted.toseries().tordd())
     
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
+
 
 # todo: make this function work for NDarrays
 def dff(data, window, percentile, baseline_offset, downsample=1):

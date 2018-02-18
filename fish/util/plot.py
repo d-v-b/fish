@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#
+#  Tools for visualizing volumetric data
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
+#
+# License: MIT
+#
+
+
 from ..util.roi import ROI
 
 

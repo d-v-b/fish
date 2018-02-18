@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#
+#  A simple class for representing a polygonal region of interest.
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
+#
+# License: MIT
+#
+
+
 class ROI(object):
     """class for representing a single polygonal ROI"""
     def __init__(self, image=[], x=[], y=[]):
