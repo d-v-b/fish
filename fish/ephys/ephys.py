@@ -1,4 +1,11 @@
-"""Process electrophysiological recordings of fish behavior and trial structure"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#
+#  Process electrophysiological recordings of fish behavior and trial structure
+#
+# Davis Bennett
+# davis.v.bennett@gmail.com
 
 
 def chop_trials(signal, thr=2000):
@@ -56,16 +63,16 @@ def estimate_swims(signal, fs=6000):
     signal : numpy array, 1 dimensional. Windowed variance of ephys signal.
 
     fs : int
-        sampling rate of the data
+        sampling rate of the data, in Hz
 
     """
 
     from numpy import zeros, where, diff, concatenate
 
-    # set dead time between peaks, in seconds
+    # set dead time between peaks, in seconds. This prevents duplicate swims.
     dead_time = .010 * fs
 
-    # set minimum distance between swim bursts in seconds
+    # set minimum duration between swim bursts in seconds
     inter_swim_min = .12 * fs
 
     # estimate swim threshold
@@ -73,8 +80,8 @@ def estimate_swims(signal, fs=6000):
 
     peaksT, peaksIndT = estimate_peaks(signal, dead_time)
 
-    burstIndT = peaksIndT[where(power[peaksIndT] > thr[peaksIndT])]
-    burstT = zeros(power.shape)
+    burstIndT = peaksIndT[where(signal[peaksIndT] > thr[peaksIndT])]
+    burstT = zeros(signal.shape)
     burstT[burstIndT] = 1
 
     interSwims = diff(burstIndT)
@@ -87,9 +94,9 @@ def estimate_swims(signal, fs=6000):
     swimStartIndB = swimStartIndB[nonShort]
     swimEndIndB = swimEndIndB[nonShort]
 
-    bursts = zeros(power.size)
-    starts = zeros(power.size)
-    stops = zeros(power.size)
+    bursts = zeros(signal.size)
+    starts = zeros(signal.size)
+    stops = zeros(signal.size)
     bursts[burstIndT] = 1
     starts[burstIndT[swimStartIndB]] = 1
     stops[burstIndT[swimEndIndB]] = 1
