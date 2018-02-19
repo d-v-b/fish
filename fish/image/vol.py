@@ -32,6 +32,46 @@ def local_corr(images, offset=[0,1,1]):
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
+def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
+    """
+    Get the baseline of a numpy array using a windowed percentile filter with optional downsampling
+
+    data : Numpy array
+        Data from which baseline is calculated
+
+    window : int
+        Window size for baseline estimation. If downsampling is used, window will shrink proportionally
+
+    percentile : int
+        Percentile of data used as baseline
+
+    downsample : int
+        Rate of downsampling used before estimating baseline. Defaults to 1 (no downsampling).
+
+    """
+    from scipy.signal import decimate
+    from scipy.ndimage.filters import percentile_filter
+    from scipy.interpolate import interp1d
+    from numpy import ones
+
+    size = ones(data.ndim, dtype='int')
+    size[axis] *= window//downsample
+
+    if downsample == 1:
+        baseline = percentile_filter(data, percentile=percentile, size=size)
+
+    else:
+        # center the data before applying decimation
+        mn = expand_dims(data.mean(axis), axis)
+        data_shifted = data - mn
+        data_ds = decimate(data_shifted, downsample, ftype='fir', zero_phase=True, n=100, axis=axis)
+        baseline_ds = percentile_filter(data_ds, percentile=percentile, size=size)
+        baseline = interp1d(range(0, data.shape[axis], downsample), baseline_ds, axis=axis)(range(data.shape[axis]))
+        baseline += mn
+
+    return baseline
+
+
 # todo: make this function work for NDarrays
 def dff(data, window, percentile, baseline_offset, downsample=1):
     """
