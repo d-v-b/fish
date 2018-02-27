@@ -11,8 +11,12 @@
 #
 
 
-def _tif_reader(tif_path):
+def _tif_reader(tif_path, roi=None):
     from skimage.io import imread
+
+    if roi is not None:
+        raise NotImplementedError
+
     return imread(tif_path)
 
 
@@ -21,10 +25,14 @@ def _tif_writer(tif_path, image):
     imsave(tif_path, image)
 
     
-def _stack_reader(stack_path):
+def _stack_reader(stack_path, roi=None):
     from fish.image import vol as volt
     from numpy import fromfile
     from os.path import sep, split
+
+    if roi is not None:
+        raise NotImplementedError
+
     dims = volt.get_stack_dims(split(stack_path)[0] + sep)
     im = fromfile(stack_path, dtype='int16')
     im = im.reshape(dims[-1::-1])
@@ -35,8 +43,12 @@ def _stack_writer(stack_path, image):
     raise NotImplementedError
 
     
-def _klb_reader(klb_path):
+def _klb_reader(klb_path, roi=None):
     from pyklb import readfull
+
+    if roi is not None:
+        raise NotImplementedError
+
     # pyklb whines if it doesn't get a python string
     return readfull(str(klb_path))
 
@@ -46,10 +58,14 @@ def _klb_writer(klb_path, image):
     writefull(image, str(klb_path))
 
     
-def _h5_reader(h5_path):
+def _h5_reader(h5_path, roi=None):
     from h5py import File
+
+    if roi is None:
+        roi = slice(None)
+
     with File(h5_path, 'r') as f:
-        return f['default'].value
+        return f['default'][roi]
 
     
 def _h5_writer(h5_path, data):
@@ -78,16 +94,18 @@ writers['klb'] = _klb_writer
 writers['h5'] = _h5_writer
 
 
-def read_image(fname):
+def read_image(fname, roi=None):
     """
     Load .stack, .tif, .klb, or .h5 data and return as a numpy array
 
     fname : string, path to image file
 
+    roi : tuple of slice objects. For data in hdf5 format, passing an roi allows the rapid loading of a chunk of data.
+
     """
     # Get the file extension for this file, assuming it is the last continuous string after the last period
     fmt = fname.split('.')[-1]
-    return readers[fmt](fname)
+    return readers[fmt](fname, roi)
 
 
 def write_image(fname, data):
@@ -104,20 +122,27 @@ def write_image(fname, data):
     return writers[fmt](fname, data)
 
 
-def read_images(fnames, parallelism=None):
+def read_images(fnames, roi=None, parallelism=None):
     """
     Load a sequence of images
 
     fnames : iterable of file paths
 
+    roi : tuple of slice objects. For data in hdf5 format, passing an roi allows the rapid loading of a chunk of data.
+
     parallelism : None if no parallelism, an int to indicate the number of processes to use, -1 means use all
     """
     from numpy import array
+    from functools import partial
 
     # Get the file format of the images
     fmt = fnames[0].split('.')[-1]
+
+    # make a partial function so that we can can easily use multiprocessing
+    reader = partial(readers[fmt], roi=roi)
+
     if parallelism is None:
-        result = array([readers[fmt](fn) for fn in fnames])
+        result = array([reader(fn) for fn in fnames])
 
     else:
         if isinstance(parallelism, int):
@@ -128,7 +153,7 @@ def read_images(fnames, parallelism=None):
                 num_cores = min(parallelism, cpu_count())
 
             with Pool(num_cores) as pool:
-                result = array(pool.map(readers[fmt], fnames))
+                result = array(pool.map(reader, fnames))
 
     return result
 
