@@ -131,10 +131,6 @@ def read_image(fname, roi=None, parallelism=1):
 
             with Pool(num_cores) as pool:
                 result = array(pool.map(reader, fname))
-
-    return result
-
-
     else:
         raise TypeError('First argument must be string for a one file or (tuple, list, ndarray) for many files')
 
