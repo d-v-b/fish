@@ -18,7 +18,7 @@ from numpy import ndarray
 
 class ZDS(object):
 
-    def __init__(self, experiment_path):
+    def __init__(self, experiment_path, parallelism=1):
         """
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
@@ -27,11 +27,10 @@ class ZDS(object):
         self.timing = get_stack_freq(self.path)
         self.files = sorted(glob(self.path + 'TM*'))
         self.shape = (len(self.files), *read_image(self.files[0]).shape)
+        self.paralellism = parallelism
 
     def __getitem__(self, item):
-
-        # raise NotImplementedError
-
+        # coerce input to slice using code from bolt
         if isinstance(item, int):
             item = tuple([slicify(item, self.shape[0])])
         if isinstance(item, tuple):
@@ -43,7 +42,11 @@ class ZDS(object):
         fnames = self.files[item[0]]
 
         if len(fnames) == 1:
-            return read_image()
+            result = read_image(fnames, roi=item[1:])
+        else:
+            result = read_image(fnames, roi=item[1:], parallelism=self.paralellism)
+
+        return result
 
 
 def slicify(slc, dim):

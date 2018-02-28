@@ -94,7 +94,7 @@ writers['klb'] = _klb_writer
 writers['h5'] = _h5_writer
 
 
-def read_image(fname, roi=None):
+def read_image(fname, roi=None, parallelism=1):
     """
     Load .stack, .tif, .klb, or .h5 data and return as a numpy array
 
@@ -102,11 +102,14 @@ def read_image(fname, roi=None):
 
     roi : tuple of slice objects. For data in hdf5 format, passing an roi allows the rapid loading of a chunk of data.
 
+    parallelism : int, defines the number of cores to use for loading multiple images. Set to -1 to use all cores.
+
     """
     # Get the file extension for this file, assuming it is the last continuous string after the last period
 
     from functools import partial
     from numpy import array, ndarray
+    from multiprocessing import Pool, cpu_count
 
     if isinstance(fname, str):
         fmt = fname.split('.')[-1]
@@ -116,7 +119,22 @@ def read_image(fname, roi=None):
     elif isinstance(fname, (tuple, list, ndarray)):
         fmt = fname[0].split('.')[-1]
         reader = partial(readers[fmt], roi=roi)
-        result = array([reader(f) for f in fname])
+
+        if parallelism == 1:
+            result = array([reader(f) for f in fname])
+
+        else:
+            if parallelism == -1:
+                num_cores = cpu_count()
+            else:
+                num_cores = min(parallelism, cpu_count())
+
+            with Pool(num_cores) as pool:
+                result = array(pool.map(reader, fname))
+
+    return result
+
+
     else:
         raise TypeError('First argument must be string for a one file or (tuple, list, ndarray) for many files')
 
