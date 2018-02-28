@@ -104,8 +104,23 @@ def read_image(fname, roi=None):
 
     """
     # Get the file extension for this file, assuming it is the last continuous string after the last period
-    fmt = fname.split('.')[-1]
-    return readers[fmt](fname, roi)
+
+    from functools import partial
+    from numpy import array, ndarray
+
+    if isinstance(fname, str):
+        fmt = fname.split('.')[-1]
+        reader = partial(readers[fmt], roi=roi)
+        result = reader(fname)
+
+    elif isinstance(fname, (tuple, list, ndarray)):
+        fmt = fname[0].split('.')[-1]
+        reader = partial(readers[fmt], roi=roi)
+        result = array([reader(f) for f in fname])
+    else:
+        raise TypeError('First argument must be string for a one file or (tuple, list, ndarray) for many files')
+
+    return result
 
 
 def write_image(fname, data):

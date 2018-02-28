@@ -52,7 +52,7 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
     from scipy.signal import decimate
     from scipy.ndimage.filters import percentile_filter
     from scipy.interpolate import interp1d
-    from numpy import ones
+    from numpy import ones, expand_dims
 
     size = ones(data.ndim, dtype='int')
     size[axis] *= window//downsample
@@ -61,6 +61,7 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
         baseline = percentile_filter(data, percentile=percentile, size=size)
 
     else:
+        # todo: replace this with convolution with a gaussian kernel. more stable than fourier-based reconstruction.
         # center the data before applying decimation
         mn = expand_dims(data.mean(axis), axis)
         data_shifted = data - mn
