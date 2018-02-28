@@ -23,7 +23,7 @@ class ZDS(object):
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
         self.path = experiment_path
-        self.metadata = get_metadata(self.path + 'Ch0.xml')
+        self.metadata = get_metadata(self.path + 'ch0.xml')
         self.timing = get_stack_freq(self.path)
         self.files = sorted(glob(self.path + 'TM*'))
         self.shape = (len(self.files), *read_image(self.files[0]).shape)
