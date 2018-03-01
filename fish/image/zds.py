@@ -13,7 +13,7 @@
 from ..image.vol import get_metadata, get_stack_freq
 from glob import glob
 from ..util.fileio import read_image
-from numpy import ndarray
+from numpy import ndarray, squeeze, array
 
 
 class ZDS(object):
@@ -24,12 +24,17 @@ class ZDS(object):
         """
         self.path = experiment_path
         self.metadata = get_metadata(self.path + 'ch0.xml')
+        # todo: turn the timing into a field in the metata prop
         self.timing = get_stack_freq(self.path)
-        self.files = sorted(glob(self.path + 'TM*'))
+        self.files = array(sorted(glob(self.path + 'TM*')))
         self.shape = (len(self.files), *read_image(self.files[0]).shape)
         self.paralellism = parallelism
-
+    
+    #todo: add repr 
+        
+    
     def __getitem__(self, item):
+        #todo: raise an error when we try to index out of bounds
         # coerce input to slice using code from bolt
         if isinstance(item, int):
             item = tuple([slicify(item, self.shape[0])])
@@ -37,7 +42,8 @@ class ZDS(object):
             item = tuple([slicify(i, n) if isinstance(i, int) else i for i, n in zip(item, self.shape[:len(item)])])
         if isinstance(item, (list, ndarray)):
             item = (item,)
-
+        if isinstance(item, slice):
+            item = (item, *(slice(None),) * len(self.shape[1:]))
         # figure out which files we will be working with
         fnames = self.files[item[0]]
 
@@ -46,7 +52,7 @@ class ZDS(object):
         else:
             result = read_image(fnames, roi=item[1:], parallelism=self.paralellism)
 
-        return result
+        return squeeze(result)
 
 
 def slicify(slc, dim):
