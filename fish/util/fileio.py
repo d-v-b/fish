@@ -27,15 +27,16 @@ def _tif_writer(tif_path, image):
     
 def _stack_reader(stack_path, roi=None):
     from fish.image import vol as volt
-    from numpy import fromfile
+    from numpy import fromfile, memmap    
     from os.path import sep, split
-
+    
+    dims = tuple(volt.get_stack_dims(split(stack_path)[0] + sep))[::-1]
+    
     if roi is not None:
-        raise NotImplementedError
-
-    dims = volt.get_stack_dims(split(stack_path)[0] + sep)
-    im = fromfile(stack_path, dtype='int16')
-    im = im.reshape(dims[-1::-1])
+        im = memmap(stack_path, dtype='uint16', shape=dims)[roi] 
+    else:
+        im = fromfile(stack_path, dtype='uint16').reshape(dims)
+        
     return im
 
 

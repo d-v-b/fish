@@ -14,7 +14,7 @@ from ..image.vol import get_metadata, get_stack_freq
 from glob import glob
 from ..util.fileio import read_image
 from numpy import ndarray, squeeze, array
-
+from pathlib import Path
 
 class ZDS(object):
 
@@ -22,15 +22,17 @@ class ZDS(object):
         """
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
+        # todo: properly handle single-plane recordings
         self.path = experiment_path
+        self.exp_name = Path(self.path).parts[-1]
         self.metadata = get_metadata(self.path + 'ch0.xml')
-        # todo: turn the timing into a field in the metata prop
-        self.timing = get_stack_freq(self.path)
+        self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
         self.files = array(sorted(glob(self.path + 'TM*')))
         self.shape = (len(self.files), *read_image(self.files[0]).shape)
         self.paralellism = parallelism
     
-    #todo: add repr 
+    def __repr__(self):
+        return 'Experiment name: {0} \nShape: {1}'.format(self.exp_name, self.shape)
         
     
     def __getitem__(self, item):
