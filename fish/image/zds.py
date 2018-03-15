@@ -10,7 +10,7 @@
 # License: MIT
 #
 
-from ..image.vol import get_metadata, get_stack_freq
+from ..image.vol import get_metadata, get_stack_freq, get_stack_dims
 from glob import glob
 from ..util.fileio import read_image
 from numpy import ndarray, squeeze, array
@@ -28,7 +28,7 @@ class ZDS(object):
         self.metadata = get_metadata(self.path + 'ch0.xml')
         self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
         self.files = array(sorted(glob(self.path + 'TM*')))
-        self.shape = (len(self.files), *read_image(self.files[0]).shape)
+        self.shape = (len(self.files), *get_stack_dims(self.path))
         self.paralellism = parallelism
     
     def __repr__(self):

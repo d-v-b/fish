@@ -61,13 +61,16 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
         baseline = percentile_filter(data, percentile=percentile, size=size)
 
     else:
-        # todo: replace this with convolution with a gaussian kernel. more stable than fourier-based reconstruction.
+        # todo: replace this with convolution with a gaussian kernel. more stable than fourier-based decimation.
         # center the data before applying decimation
         mn = expand_dims(data.mean(axis), axis)
         data_shifted = data - mn
         data_ds = decimate(data_shifted, downsample, ftype='fir', zero_phase=True, n=100, axis=axis)
         baseline_ds = percentile_filter(data_ds, percentile=percentile, size=size)
-        baseline = interp1d(range(0, data.shape[axis], downsample), baseline_ds, axis=axis)(range(data.shape[axis]))
+        baseline = interp1d(range(0, data.shape[axis], downsample),
+                            baseline_ds,
+                            axis=axis,
+                            fill_value='extrapolate')(range(data.shape[axis]))
         baseline += mn
 
     return baseline
