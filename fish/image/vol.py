@@ -40,7 +40,7 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
         Data from which baseline is calculated
 
     window : int
-        Window size for baseline estimation. If downsampling is used, window will shrink proportionally
+        Window size for baseline estimation. If downsampling is used, window shrinks proportionally
 
     percentile : int
         Percentile of data used as baseline
@@ -48,44 +48,41 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
     downsample : int
         Rate of downsampling used before estimating baseline. Defaults to 1 (no downsampling).
 
+    axis : int
+        For ndarrays, this specifies the axis to estimate baseline along. Default is -1.
+
     """
-    from scipy.signal import decimate
     from scipy.ndimage.filters import percentile_filter
     from scipy.interpolate import interp1d
-    from numpy import ones, expand_dims
+    from numpy import ones
 
     size = ones(data.ndim, dtype='int')
     size[axis] *= window//downsample
+
+    slices = [slice(None)] * data.ndim
+    slices[axis] = slice(0, None, downsample)
 
     if downsample == 1:
         baseline = percentile_filter(data, percentile=percentile, size=size)
 
     else:
-        # todo: replace this with convolution with a gaussian kernel. more stable than fourier-based decimation.
-        # center the data before applying decimation
-        mn = expand_dims(data.mean(axis), axis)
-        data_shifted = data - mn
-        data_ds = decimate(data_shifted, downsample, ftype='fir', zero_phase=True, n=100, axis=axis)
+        data_ds = data[slices]
         baseline_ds = percentile_filter(data_ds, percentile=percentile, size=size)
-        baseline = interp1d(range(0, data.shape[axis], downsample),
-                            baseline_ds,
-                            axis=axis,
-                            fill_value='extrapolate')(range(data.shape[axis]))
-        baseline += mn
+        interper = interp1d(range(0, data.shape[axis], downsample), baseline_ds, axis=axis, fill_value='extrapolate')
+        baseline = interper(range(data.shape[axis]))
 
     return baseline
 
 
-# todo: make this function work for NDarrays
-def dff(data, window, percentile, baseline_offset, downsample=1):
+def dff(data, window, percentile, baseline_offset, downsample=1, axis=-1):
     """
     Estimate normalized change in fluorescence (dff) with the option to estimate baseline on downsampled data.
     Returns a vector with the same size as the input.
 
-    If downsampling is required, the input data will be downsampled using scipy.signal.decimate before baseline
+    If downsampling is required, the input data will be downsampled before baseline
     is estimated with a percentile filter. The baseline is then linearly interpolated to match the size of data.
 
-    data : 1D numpy array
+    data : Numpy array
         Data to be processed
 
     window : int
@@ -99,24 +96,12 @@ def dff(data, window, percentile, baseline_offset, downsample=1):
 
     downsample : int
         Rate of downsampling used before estimating baseline. Defaults to 1 (no downsampling).
+
+    axis : int
+        For ndarrays, this specifies the axis to estimate baseline along. Default is -1.
     """
 
-    from scipy.signal import decimate
-    from scipy.ndimage.filters import percentile_filter
-    from numpy import interp
-
-    if downsample == 1:
-        baseline = percentile_filter(data, percentile=percentile, size=window)
-
-    else:
-        data_ds = decimate(data, downsample, ftype='fir', zero_phase=True)
-        # using decimate with the default filter shifts the output by ~1-2% relative to the input.
-        # correct for baseline shift by adding a small constant to data_ds
-        data_ds += data.min() - data_ds.min()
-        baseline_ds = percentile_filter(data_ds, percentile=percentile, size=window // downsample)
-
-        baseline = interp(range(0, len(data)), range(0, len(data), downsample), baseline_ds)
-
+    baseline = estimate_baseline(data, window, percentile, downsample=downsample, axis=axis)
     return (data - baseline) / (baseline + baseline_offset)
 
 
