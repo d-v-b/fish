@@ -179,32 +179,6 @@ def get_stack_freq(inDir):
     return times
 
 
-def get_stack_data(raw_path, frameNo=0):
-    """
-    :rawPath: string representing a path to a directory containing raw data
-    :frameNo: int representing the timepoint of the data desired, default is 0
-    """
-
-    from numpy import fromfile
-    from string import Template
-    from os.path import split
-    from glob import glob
-
-    channel = 0
-    if split(raw_path)[0][-2:] == '01':
-        channel = 1
-    param_files = glob(raw_path + 'ch*.xml')
-    if len(param_files) == 0:
-            print('No .xml files found!')
-
-    dims = get_metadata(param_files[0])['dimensions']
-    fnames = glob(raw_path + '*.stack')
-    fnames.sort()
-    im = fromfile(fnames[frameNo], dtype='int16')
-    im = im.reshape(dims[-1::-1])
-    return im
-
-
 def rearrange_bidirectional_stack(stack_data):
     """
     Re-arrange the z planes in data that were acquired bidirectionally. Convert from temporal order to spatial order.
