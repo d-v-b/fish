@@ -32,7 +32,7 @@ def local_corr(images, offset=[0,1,1]):
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
-def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
+def baseline(data, window, percentile, downsample=1, axis=-1):
     """
     Get the baseline of a numpy array using a windowed percentile filter with optional downsampling
 
@@ -63,15 +63,15 @@ def estimate_baseline(data, window, percentile, downsample=1, axis=-1):
     slices[axis] = slice(0, None, downsample)
 
     if downsample == 1:
-        baseline = percentile_filter(data, percentile=percentile, size=size)
+        bl = percentile_filter(data, percentile=percentile, size=size)
 
     else:
         data_ds = data[slices]
         baseline_ds = percentile_filter(data_ds, percentile=percentile, size=size)
         interper = interp1d(range(0, data.shape[axis], downsample), baseline_ds, axis=axis, fill_value='extrapolate')
-        baseline = interper(range(data.shape[axis]))
+        bl = interper(range(data.shape[axis]))
 
-    return baseline
+    return bl
 
 
 def dff(data, window, percentile, baseline_offset, downsample=1, axis=-1):
@@ -101,8 +101,8 @@ def dff(data, window, percentile, baseline_offset, downsample=1, axis=-1):
         For ndarrays, this specifies the axis to estimate baseline along. Default is -1.
     """
 
-    baseline = estimate_baseline(data, window, percentile, downsample=downsample, axis=axis)
-    return (data - baseline) / (baseline + baseline_offset)
+    bl = baseline(data, window, percentile, downsample=downsample, axis=axis)
+    return (data - bl) / (bl + baseline_offset)
 
 
 def get_metadata(param_file):
