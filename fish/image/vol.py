@@ -206,32 +206,6 @@ def rearrange_bidirectional_stack(stack_data):
         return stack_data[z_range_new]
 
 
-
-def volume_mask(vol):
-    """
-    :param vol: a 3-dimensional numpy array
-    :return: mask, a binary mask with the same shape as vol, and mCoords, a list of (x,y,z) indices representing the
-    masked coordinates.
-    """
-    from numpy import array, where
-    from scipy.signal import medfilt2d
-    from skimage.filter import threshold_otsu
-    from skimage import morphology as morph
-
-    filtVol = array([medfilt2d(x.astype('float32')) for x in vol])
-
-    thr = threshold_otsu(filtVol.ravel())
-    mask = filtVol > thr
-    strel = morph.selem.disk(3)
-    mask = array([morph.binary_closing(x, strel) for x in mask])
-    mask = array([morph.binary_opening(x, strel) for x in mask])
-
-    z, y, x = where(mask)
-    mCoords = zip(x, y, z)
-
-    return mask, mCoords
-
-
 def filter_flat(vol, mask):
     """
     Flatten an array and return a list of the elements at positions where the binary mask is True.
