@@ -28,7 +28,7 @@ class ZDS(object):
         self.metadata = get_metadata(self.path + 'ch0.xml')
         self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
         self.files = array(sorted(glob(self.path + 'TM*')))
-        self.shape = (len(self.files), *get_stack_dims(self.path))
+        self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
         self.paralellism = parallelism
     
     def __repr__(self):
@@ -130,34 +130,6 @@ def get_metadata(param_file):
         exp_dict['z_step'] = float(exp_dict['z_step'])
 
     return exp_dict
-
-
-def get_stack_dims(inDir):
-    """
-    :param inDir: a string representing a path to a directory containing metadata
-    :return: dims, a list of integers representing the xyz dimensions of the data
-    """
-    import xml.etree.ElementTree as ET
-    from lxml import etree
-    from os.path import split
-
-    parser = etree.XMLParser(recover=True)
-
-    channel = 0
-    if split(split(inDir)[0])[1] == 'CHN01':
-        channel = 1
-
-    dims = ET.parse(inDir + 'ch' + str(channel) + '.xml', parser=parser)
-    root = dims.getroot()
-
-    for info in root.findall('info'):
-        if info.get('dimensions'):
-            dims = info.get('dimensions')
-
-    dims = dims.split('x')
-    dims = [int(float(num)) for num in dims]
-
-    return dims
 
 
 def get_stack_freq(inDir):
