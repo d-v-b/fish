@@ -40,7 +40,7 @@ def prepare_images(files, context, median_filter_size, background_offset):
 
 def get_params(path):
     import json
-    with open(path,'w') as f:
+    with open(path,'r') as f:
         params = json.load(f)
     return params
 
@@ -51,10 +51,10 @@ def motion_correction(images, reg_path, overwrite=False):
     from os import makedirs
     from skimage.io import imsave
     from fish.image.alignment import estimate_translation
-    from numpy import save, array, zeros, vstack, load
+    from numpy import save, array, zeros, vstack, load, arange
     from scipy.ndimage.filters import median_filter
 
-    ref_range = range((images.shape[0] // 2) - 5, (images.shape[0] // 2) + 5)
+    ref_range = arange(-5,5) + images.shape[0] // 2
     medfilt_window = 200
 
     if not exists(reg_path):
@@ -69,7 +69,7 @@ def motion_correction(images, reg_path, overwrite=False):
         overwrite = True
 
     if overwrite:
-        ref = images[ref_range].mean()
+        ref = images[ref_range].mean().toarray()
         imsave(reg_path + 'anat_reference.tif', ref)
         reg = images.map(lambda v: estimate_translation(ref.max(0), v.max(0))).toarray()
         affs = array([r.affine for r in reg])
@@ -112,53 +112,68 @@ def save_images(images, out_path, multifile, exp_name):
         images.resc.tordd().foreach(lambda v: rdd_to_tif(v, out_path))
     else:
         from skimage.io import imsave
-        imsave(out_path + exp_name + '.tif', images.toarray(), compress=1)
+        imsave(out_path + exp_name + '.tif', images.toarray(), imagej=True)
+        
 
-
-def main():
+def parse_args():
     from argparse import ArgumentParser
+    parser = ArgumentParser(description='Generate a df/f volume from raw light sheet data, and save as .tif files.')
+    parser.add_argument('raw_path', help='A path to a directory of raw files.')
+    parser.add_argument('param_path', help='A path to a json file containing dff params.')
+    parser.add_argument('output_path', help='A path to a directory to contain output.')
+    args = parser.parse_args()
+    return args
+
+
+def generate_dff_images(raw_path, param_path, output_path, sc):
     from fish.image.zds import ZDS
     from fish.image.vol import dff
     from skimage.transform import downscale_local_mean
     from functools import partial
     import json
     from os.path import exists
-    from os import makedirs
+    from os import makedirs    
 
-    parser = ArgumentParser(description='Generate a df/f volume from raw light sheet data, and save as .tif files.')
-    parser.add_argument('-raw', help='A directory of raw files.')
-    parser.add_argument('-params', help='A path to a json file containing dff params.')
-    parser.add_argument('-out', help='Directory to contain output.')
-    args = parser.parse_args()
+    dset = ZDS(raw_path)
+    params = get_params(param_path)
+   
+    if not exists(output_path):
+        makedirs(output_path)
 
-    dset = ZDS(args.raw)
-    params = get_params(args.params)
-
-    if not exists(args.out):
-        makedirs(args.out)
-
-    reg_path = args.out + 'reg/'
-
-    sc = get_sc('dff_movie')
+    reg_path = output_path + 'reg/'
+    
     dff_fun = partial(dff, window=params['baseline_window'] * dset.metadata['volume_rate'],
                       percentile=params['baseline_percentile'],
                       baseline_offset=params['baseline_offset'],
                       downsample=params['baseline_downsampling'])
-
-    ims = prepare_images(dset.files, sc)
-    ims_registered = motion_correction(ims, reg_path, overwrite=params['overwrite_registration'])
-    ims_ds = ims_registered.map(lambda v: downscale_local_mean(v, params['spatial_downsampling']))
+    
+    downsample_fun = partial(downscale_local_mean, factors=tuple(params['spatial_downsampling']))
+    background_offset = get_background_offset(raw_path)
+    median_filter_size=(1,3,3)
+    
+    print('Preparing images...')
+    ims = prepare_images(dset.files, sc, median_filter_size, background_offset)    
+    
+    print('Registering images...')
+    ims_registered = motion_correction(ims, reg_path, overwrite=params['overwrite_registration'])    
+    ims_ds = ims_registered.map(downsample_fun)
+    
+    print('Estimating dff...')
     ims_dff, dff_lim = apply_dff(ims_ds, dff_fun, params['out_dtype'])
-
-    save_images(ims_dff, args.out, multifile=False, exp_name=dset.exp_name)
-
+    
+    print('Saving images...')
+    save_images(ims_dff, output_path, multifile=False, exp_name=dset.exp_name)
     metadata = params.copy()
     metadata['dff_lims'] = [float(dff_lim[0]), float(dff_lim[1])]
-    metadata_fname = args.out + 'metadata.json'
+    metadata_fname = output_path + 'dff_metadata.json'
     with open(metadata_fname, 'w') as fp:
         json.dump(metadata, fp)
-
+    
+    return 1
+    
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    sc = get_sc('dff_movie')
+    generate_dff_images(args.raw_path, args.param_path, args.output_path, sc)
 
 
