@@ -112,7 +112,7 @@ def save_images(images, out_path, multifile, exp_name):
         from os import makedirs
         # make a folder for all these images
         subdir = makedirs(out_path + 'dff/')
-        images.resc.tordd().foreach(lambda v: rdd_to_tif(v, subdir))
+        images.tordd().foreach(lambda v: rdd_to_tif(v, subdir))
     else:
         from skimage.io import imsave
         imsave(out_path + exp_name + '.tif', images.toarray(), imagej=True)
