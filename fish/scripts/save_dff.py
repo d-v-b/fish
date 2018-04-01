@@ -103,13 +103,16 @@ def rdd_to_tif(kv, path):
     key = kv[0][0]
     val = kv[1]
     fname = 't_{:06d}.tif'.format(key)
-    imsave(path + fname, val, compress=1)
+    imsave(path + fname, val, imagej=True)
 
 
 def save_images(images, out_path, multifile, exp_name):
     # save the images
     if multifile:
-        images.resc.tordd().foreach(lambda v: rdd_to_tif(v, out_path))
+        from os import makedirs
+        # make a folder for all these images
+        subdir = makedirs(out_path + 'dff/')
+        images.resc.tordd().foreach(lambda v: rdd_to_tif(v, subdir))
     else:
         from skimage.io import imsave
         imsave(out_path + exp_name + '.tif', images.toarray(), imagej=True)
@@ -162,7 +165,8 @@ def generate_dff_images(raw_path, param_path, output_path, sc):
     ims_dff, dff_lim = apply_dff(ims_ds, dff_fun, params['out_dtype'])
     
     print('Saving images...')
-    save_images(ims_dff, output_path, multifile=False, exp_name=dset.exp_name)
+    
+    save_images(ims_dff, output_path, multifile=params['save_multifile'], exp_name=dset.exp_name)
     metadata = params.copy()
     metadata['dff_lims'] = [float(dff_lim[0]), float(dff_lim[1])]
     metadata_fname = output_path + 'dff_metadata.json'
