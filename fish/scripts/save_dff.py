@@ -138,6 +138,9 @@ def generate_dff_images(raw_path, param_path, output_path, sc):
     from os import makedirs    
 
     dset = ZDS(raw_path)
+    # deal with YuMu's convention of renaming the raw data folder
+    if dset.exp_name == 'raw':
+        dset.exp_name = dset.metadata['data_header']
     params = get_params(param_path)
    
     if not exists(output_path):
