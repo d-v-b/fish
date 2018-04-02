@@ -26,11 +26,11 @@ def _tif_writer(tif_path, image):
 
     
 def _stack_reader(stack_path, roi=None):
-    from fish.image import vol as volt
     from numpy import fromfile, memmap    
     from os.path import sep, split
-    
-    dims = tuple(volt.get_stack_dims(split(stack_path)[0] + sep))[::-1]
+    from fish.image.zds import get_stack_dims
+
+    dims = tuple(get_stack_dims(split(stack_path)[0] + sep))[::-1]
     
     if roi is not None:
         im = memmap(stack_path, dtype='uint16', shape=dims)[roi] 
@@ -150,42 +150,6 @@ def write_image(fname, data):
     # Get the file extension for this file, assuming it is the last continuous string after the last period
     fmt = fname.split('.')[-1]
     return writers[fmt](fname, data)
-
-
-def read_images(fnames, roi=None, parallelism=None):
-    """
-    Load a sequence of images
-
-    fnames : iterable of file paths
-
-    roi : tuple of slice objects. For data in hdf5 format, passing an roi allows the rapid loading of a chunk of data.
-
-    parallelism : None if no parallelism, an int to indicate the number of processes to use, -1 means use all
-    """
-    from numpy import array
-    from functools import partial
-
-    # Get the file format of the images
-    fmt = fnames[0].split('.')[-1]
-
-    # make a partial function so that we can can easily use multiprocessing
-    reader = partial(readers[fmt], roi=roi)
-
-    if parallelism is None:
-        result = array([reader(fn) for fn in fnames])
-
-    else:
-        if isinstance(parallelism, int):
-            from multiprocessing import Pool, cpu_count
-            if parallelism == -1:
-                num_cores = cpu_count()
-            else:
-                num_cores = min(parallelism, cpu_count())
-
-            with Pool(num_cores) as pool:
-                result = array(pool.map(reader, fnames))
-
-    return result
 
 
 def image_conversion(source_path, dest_fmt, wipe=False):
