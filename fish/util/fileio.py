@@ -28,9 +28,9 @@ def _tif_writer(tif_path, image):
 def _stack_reader(stack_path, roi=None):
     from numpy import fromfile, memmap    
     from os.path import sep, split
-    from fish.image.zds import get_stack_dims
+    from fish.image.zds import ZDS
 
-    dims = tuple(get_stack_dims(split(stack_path)[0] + sep))[::-1]
+    dims = ZDS(split(stack_path)[0] + sep).shape[1:]
     
     if roi is not None:
         im = memmap(stack_path, dtype='uint16', shape=dims)[roi] 
