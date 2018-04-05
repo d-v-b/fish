@@ -321,7 +321,7 @@ class SYNreg(object):
                                               moving_g2w,
                                               starting_affine=self.rigid_tx.affine)
 
-        self.sdr_tx = self.sdreg.optimize(static, moving, static_g2w, moving_g2w, self.affine)
+        self.sdr_tx = self.sdreg.optimize(static, moving, static_g2w, moving_g2w, self.affine_tx.affine)
 
     def apply_transform(self, moving, moving_axis_units, desired_transform):
         from numpy import eye
