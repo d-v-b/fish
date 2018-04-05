@@ -283,8 +283,8 @@ class SYNreg(object):
         moving_g2w = static_g2w.copy()
         params0 = None
 
-        static_g2w[range(1 + static.ndim), range(1 + static.ndim)] = static_axis_units
-        moving_g2w[range(1 + moving.ndim), range(1 + moving.ndim)] = moving_axis_units
+        static_g2w[range(static.ndim), range(static.ndim)] = static_axis_units
+        moving_g2w[range(moving.ndim), range(moving.ndim)] = moving_axis_units
 
         self.affreg = AffineRegistration(metric=self.metric_lin,
                                          level_iters=self.level_iters_lin,
@@ -328,7 +328,7 @@ class SYNreg(object):
         from numpy.linalg import inv
 
         moving_g2w = eye(1 + moving.ndim)
-        moving_g2w[range(1 + moving.ndim), range(1 + moving.ndim)] = moving_axis_units
+        moving_g2w[range(moving.ndim), range(moving.ndim)] = moving_axis_units
 
         txs = dict(affine=self.affine_tx, sdr=self.sdr_tx)
         tx = txs[desired_transform]
