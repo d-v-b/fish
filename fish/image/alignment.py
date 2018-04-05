@@ -182,41 +182,6 @@ def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4, 2, 1), 
     return tx
 
 
-def estimate_translation_batch(fixed, moving):
-    """
-    Convenience function for efficiently estimating a transformation between volumes in a parallel context.
-
-    Parameters
-    ----------
-    fixed : numpy array, 2D or 3D
-        The reference image.
-
-    moving : numpy array, 2D or 3D
-    The image to be transformed.
-    """
-    from numpy import array
-    from SimpleITK import ImageRegistrationMethod, TranslationTransform
-
-    r = sitk.ImageRegistrationMethod()
-    r.SetMetricAsMattesMutualInformation(numberOfHistogramBins=32)
-    r.SetOptimizerAsRegularStepGradientDescent(learningRate=0.1,
-                                               minStep=1e-5,
-                                               numberOfIterations=100,
-                                               gradientMagnitudeTolerance=1e-8)
-    r.SetMetricSamplingStrategy(r.REGULAR)
-    r.SetMetricSamplingPercentage(.25)
-    tx = sitk.TranslationTransform(fixed_.GetDimension())
-    r.SetInitialTransform(tx)
-    r.SetSmoothingSigmasAreSpecifiedInPhysicalUnits(False)
-    r.SetShrinkFactorsPerLevel(shrinkFactors = [8, 4, 2])
-    r.SetSmoothingSigmasPerLevel(smoothingSigmas=[3, 2, 1])
-    r.SetInterpolator(sitk.sitkLinear)
-    tx = estimate_translation_itk(fixed, moving, r)
-    dxdydz = array(tx.GetParameters()).T
-
-    return dxdydz
-
-
 def ants_registration(fixed, moving, out_tform, tip='r', restrict=None):
     """
     Image registration between two image files using a command-line call to ANTS. Written by Mika Rubinov with
@@ -276,3 +241,107 @@ def ants_registration(fixed, moving, out_tform, tip='r', restrict=None):
     ])
 
     system(antsRegistration_call)
+
+
+class SYNreg(object):
+
+    """
+    Wrap full linear + nonlinear(syn) registration, with the assumption that affine  params and warp field are
+    estimated from spatially downsampled data.
+    """
+
+    def __init__(self, level_iters_lin, sigmas, factors, level_iters_syn, metric_lin=None,
+                 metric_syn=None, ss_sigma_factor=1.0, verbosity=0):
+        from dipy.align.metrics import CCMetric
+        from dipy.align.imaffine import MutualInformationMetric
+        self.level_iters_lin = level_iters_lin
+        self.sigmas = sigmas
+        self.factors = factors
+        self.level_iters_syn = level_iters_syn
+        self.ss_sigma_factor = ss_sigma_factor
+        self.verbosity = verbosity
+        if metric_lin is None:
+            nbins = 32
+            self.metric_lin = MutualInformationMetric(nbins, None)
+        if metric_syn is None:
+            self.metric_syn = CCMetric(3)
+
+        self.affreg = None
+        self.sdreg = None
+        self.translation_tx = None
+        self.rigid_tx = None
+        self.affine_tx = None
+        self.sdr_tx = None
+
+    def generate_warp_field(self, static, moving, static_axis_units, moving_axis_units):
+        from numpy import eye
+        from dipy.align.imaffine import AffineRegistration
+        from dipy.align.transforms import TranslationTransform3D, RigidTransform3D, AffineTransform3D
+        from dipy.align.imwarp import SymmetricDiffeomorphicRegistration as SDR
+
+        static_g2w = eye(1 + static.ndim)
+        moving_g2w = static_g2w.copy()
+        params0 = None
+
+        static_g2w[range(1 + static.ndim), range(1 + static.ndim)] = static_axis_units
+        moving_g2w[range(1 + moving.ndim), range(1 + moving.ndim)] = moving_axis_units
+
+        self.affreg = AffineRegistration(metric=self.metric_lin,
+                                         level_iters=self.level_iters_lin,
+                                         sigmas=self.sigmas,
+                                         factors=self.factors,
+                                         verbosity=self.verbosity,
+                                         ss_sigma_factor=self.ss_sigma_factor)
+
+        self.sdreg = SDR(metric=self.metric_syn,
+                         level_iters=self.level_iters_syn,
+                         ss_sigma_factor=self.ss_sigma_factor)
+
+        self.translation_tx = self.affreg.optimize(static,
+                                                   moving,
+                                                   TranslationTransform3D(),
+                                                   params0,
+                                                   static_g2w,
+                                                   moving_g2w,
+                                                   starting_affine='mass')
+
+        self.rigid_tx = self.affreg.optimize(static,
+                                             moving,
+                                             RigidTransform3D(),
+                                             params0,
+                                             static_g2w,
+                                             moving_g2w,
+                                             starting_affine=self.translation_tx.affine)
+
+        self.affine_tx = self.affreg.optimize(static,
+                                              moving,
+                                              AffineTransform3D(),
+                                              params0,
+                                              static_g2w,
+                                              moving_g2w,
+                                              starting_affine=self.rigid_tx.affine)
+
+        self.sdr_tx = self.sdreg.optimize(static, moving, static_g2w, moving_g2w, self.affine)
+
+    def apply_transform(self, moving, moving_axis_units, desired_transform):
+        from numpy import eye
+        from numpy.linalg import inv
+
+        moving_g2w = eye(1 + moving.ndim)
+        moving_g2w[range(1 + moving.ndim), range(1 + moving.ndim)] = moving_axis_units
+
+        txs = dict(affine=self.affine_tx, sdr=self.sdr_tx)
+        tx = txs[desired_transform]
+
+        if desired_transform == 'sdr':
+            result = tx.transform(moving,
+                                  image_world2grid=inv(moving_g2w),
+                                  out_shape=moving.shape,
+                                  out_grid2world=moving_g2w)
+        else:
+            result = tx.transform(moving,
+                                  image_grid2world=moving_g2w,
+                                  sampling_grid_shape=moving.shape,
+                                  sampling_grid2world=moving_g2w)
+
+        return result
