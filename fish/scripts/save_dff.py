@@ -69,7 +69,7 @@ def motion_correction(images, reg_path, overwrite=False):
         overwrite = True
 
     if overwrite:
-        ref = images[ref_range].mean().toarray()
+        ref = images[ref_range].mean().toarray().astype('float32')
         imsave(reg_path + 'anat_reference.tif', ref)
         reg = images.map(lambda v: estimate_translation(ref.max(0), v.max(0))).toarray()
         affs = array([r.affine for r in reg])
@@ -110,8 +110,13 @@ def save_images(images, out_path, multifile, exp_name):
     # save the images
     if multifile:
         from os import makedirs
+        from os.path import exists
         # make a folder for all these images
-        subdir = makedirs(out_path + 'dff/')
+        subdir = out_path + 'dff/'
+        
+        if not exists(subdir):
+            makedirs(subdir)
+            
         images.tordd().foreach(lambda v: rdd_to_tif(v, subdir))
     else:
         from skimage.io import imsave
