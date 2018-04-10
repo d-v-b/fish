@@ -77,7 +77,7 @@ def proj_plot(volume, proj_fun, clims='auto', figsize=4, aspect=(1, 1, 1), cmap=
     return axs
 
 
-def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0):
+def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0, arrangement=[0,1,2]):
     """
     Project a volume along 3 axes using a user-supplied function, returning a 2D composite of projections. If the input
     array has the shape [z,y,x], the output shape will be: [z * aspect_z + y * aspect + y, z * aspect_z + x * aspect_x]
@@ -108,11 +108,16 @@ def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0):
         indexer = list(range(len(new_dims)))
         indexer.pop(axis)
         projs.append(resize(fun(data, axis), new_dims[indexer], mode='constant', preserve_range=True))
-
-
-    stretched[:new_dims[1], new_dims[2]:] = projs[2].T
-    stretched[new_dims[1]:, :new_dims[2]] = projs[1]
-    stretched[:new_dims[1], :new_dims[2]] = projs[0]
+    if arrangement == [0, 1, 2]:
+        stretched[:new_dims[1], new_dims[2]:] = projs[2].T
+        stretched[new_dims[1]:, :new_dims[2]] = projs[1]
+        stretched[:new_dims[1], :new_dims[2]] = projs[0]
+    elif arrangement == [2, 0, 1]:
+        stretched[:new_dims[1], :new_dims[0]] = projs[2].T[:, ::-1]
+        stretched[new_dims[1]:, new_dims[0]:] = projs[1]
+        stretched[:new_dims[1], new_dims[0]:] = projs[0]
+    else:
+        raise ValueError('Arrangement must be [0, 1, 2] or [2, 0, 1]')
 
     return stretched
 
