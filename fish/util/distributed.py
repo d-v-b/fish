@@ -16,7 +16,7 @@ def get_cluster():
     import os
     # todo: make these arguments function properly
     output_path = '/groups/ahrens/home/bennettd/dask_tmp/'
-    error_path = outputPath
+    error_path = output_path
     cluster_kwargs_pass = {}
     cluster_kwargs_pass.setdefault(
             'template',
