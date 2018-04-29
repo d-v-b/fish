@@ -11,14 +11,54 @@
 #
 
 
+def match_cam_time(events, frame_times):
+    """
+    Helper function for mapping ephys events to camera times. For each event in events, we return the nearest
+    camera frame before the event.
+
+
+    Parameters
+    ----------
+
+     events : 1D numpy array
+        Events of interest. Sampled at a higher rate than frame_times.
+
+     frame_times : 1D numpy array
+        Timepoints of camera frames to be assigned to events. Sampled at a lower rate than events.
+
+    """
+    from numpy import array
+    output = []
+    for a in events:
+        lags = array(a - frame_times)
+        before = len(lags[lags > 0]) - 1
+
+        if before >= 0:
+            output.append(before)
+
+    return array(output)
+
+
 def chop_trials(signal, thr=2000):
-    """for each unique value in the signal, 
-       return the start and stop of each epoch corresponding to that value
+    """
+    For each unique value in the input signal, return the start and stop of each epoch corresponding to that value.
+
+
+    Parameters
+    ----------
+    signal : 1D numpy array
+        Vector of categorical signals, e.g. [0,0,1,1,2,2,1,1]
+
+    thr: Integer
+        Minimum length of an epoch. Defaults to 2000 samples.
+
     """
     from numpy import unique, where, concatenate, diff
 
     conditions = unique(signal)
     chopped = {}
+
+    # todo: make this depend on estimate_onset
     for c in conditions:
         tmp = where(signal == c)[0]
         offs = where(diff(tmp) > 1)[0]
