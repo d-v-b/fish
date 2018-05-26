@@ -30,11 +30,26 @@ class ZDS(object):
         self.files = array(sorted(glob(self.path + 'TM*')))
         self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
         self.paralellism = parallelism
-    
+        self._affines = None
+        self._reference = None
+
+    @property
+    def affines(self):
+        return self._affines
+
+    @affines.setter
+    def affines(self, value):
+        if value.shape[0] != len(self.files):
+            raise ValueError('Length of affines must match length of the first axis of the data.')
+        self._affines = value
+
+    @property
+    def reference(self):
+        return self._reference
+
     def __repr__(self):
         return 'Experiment name: {0} \nShape: {1}'.format(self.exp_name, self.shape)
-        
-    
+
     def __getitem__(self, item):
         #todo: raise an error when we try to index out of bounds
         # coerce input to slice using code from bolt
