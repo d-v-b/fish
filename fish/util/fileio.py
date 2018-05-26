@@ -152,6 +152,24 @@ def write_image(fname, data):
     return writers[fmt](fname, data)
 
 
+def to_dask(fnames):
+    """
+    Return a dask array constructued from an collection of ndarrays distributed across multiple files.
+
+    fnames : iterable of sorted filenames
+    """
+    from dask.array import from_array, stack
+    from h5py import File
+
+    fmt = fnames[0].split('.')[-1]
+    sample = File(fnames[0], mode='r')['default']
+    if fmt == 'h5':
+        result = stack([from_array(File(fn, mode='r')['default'], chunks=sample.shape) for fn in fnames])
+        return result
+    else:
+        raise NotImplementedError('Only .h5 files supported at this time, not {0}'.format(fmt))
+
+
 def image_conversion(source_path, dest_fmt, wipe=False):
     """
     Convert image from one format to another, optionally erasing the source image
