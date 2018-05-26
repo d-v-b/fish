@@ -47,6 +47,11 @@ class ZDS(object):
     def reference(self):
         return self._reference
 
+    @reference.setter
+    def reference(self, value):
+        self._reference = value 
+
+
     def __repr__(self):
         return 'Experiment name: {0} \nShape: {1}'.format(self.exp_name, self.shape)
 
