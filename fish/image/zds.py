@@ -23,6 +23,7 @@ class ZDS(object):
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
         # todo: properly handle single-plane recordings
+        # todo: switch file io infrastructure over to dask
         self.path = experiment_path
         self.exp_name = Path(self.path).parts[-1]
         self.metadata = get_metadata(self.path + 'ch0.xml')
@@ -49,7 +50,7 @@ class ZDS(object):
 
     @reference.setter
     def reference(self, value):
-        self._reference = value 
+        self._reference = value
 
 
     def __repr__(self):

@@ -158,13 +158,20 @@ def to_dask(fnames):
 
     fnames : iterable of sorted filenames
     """
-    from dask.array import from_array, stack
+    from dask.array import from_delayed, from_array, stack
     from h5py import File
+    from skimage.io import imread
+    from dask.delayed import delayed
 
     fmt = fnames[0].split('.')[-1]
-    sample = File(fnames[0], mode='r')['default']
     if fmt == 'h5':
+        sample = File(fnames[0], mode='r')['default']
         result = stack([from_array(File(fn, mode='r')['default'], chunks=sample.shape) for fn in fnames])
+        return result
+    elif fmt == 'tif':
+        sample = imread(fnames[0])
+        rdr = delayed(imread)
+        result = stack([from_delayed(rdr(fn), shape=sample.shape, dtype=sample.dtype) for fn in fnames])
         return result
     else:
         raise NotImplementedError('Only .h5 files supported at this time, not {0}'.format(fmt))
