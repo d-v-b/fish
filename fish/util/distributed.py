@@ -21,7 +21,8 @@ def get_cluster():
     """
     from dask_drmaa import DRMAACluster
     import os
-
+    
+    dask_worker_script = '/groups/ahrens/home/bennettd/.dask_worker_script.sh'
     local_directory = '/scratch/' + os.environ['USER']
     output_path = ':' + local_directory
     error_path = output_path
@@ -34,7 +35,8 @@ def get_cluster():
                 '--local-directory', local_directory],
             'jobEnvironment': os.environ,
             'outputPath': output_path,
-            'errorPath': error_path
+            'errorPath': error_path,
+            'script' : dask_worker_script
 
         }
     )
