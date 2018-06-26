@@ -22,7 +22,9 @@ def get_cluster():
     from dask_drmaa import DRMAACluster
     import os
     
-    dask_worker_script = '/groups/ahrens/home/bennettd/.dask_worker_script.sh'
+    # we need these on each worker to prevent multithreaded numerical operations
+    pre_exec =('export NUM_MKL_THREADS=1',
+               'export OPENBLAS_NUM_THREADS=1')
     local_directory = '/scratch/' + os.environ['USER']
     output_path = ':' + local_directory
     error_path = output_path
@@ -36,10 +38,9 @@ def get_cluster():
             'jobEnvironment': os.environ,
             'outputPath': output_path,
             'errorPath': error_path,
-            'script' : dask_worker_script
-
         }
     )
+    cluster_kwargs_pass['preexec_commands'] = pre_exec
     cluster = DRMAACluster(**cluster_kwargs_pass)
     return cluster
 
