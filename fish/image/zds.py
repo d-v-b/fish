@@ -18,7 +18,7 @@ from pathlib import Path
 
 class ZDS(object):
 
-    def __init__(self, experiment_path, parallelism=1):
+    def __init__(self, experiment_path, parallelism=1, affines=None):
         """
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
@@ -31,7 +31,7 @@ class ZDS(object):
         self.files = array(sorted(glob(self.path + 'TM*')))
         self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
         self.paralellism = parallelism
-        self._affines = None
+        self._affines = affines
         self._reference = None
 
     @property
@@ -51,7 +51,6 @@ class ZDS(object):
     @reference.setter
     def reference(self, value):
         self._reference = value
-
 
     def __repr__(self):
         return 'Experiment name: {0} \nShape: {1}'.format(self.exp_name, self.shape)
@@ -102,15 +101,21 @@ def slicify(slc, dim):
         stop = dim if slc.stop is None else slc.stop
         step = 1 if slc.step is None else slc.step
         # account for negative indices
-        if start < 0: start += dim
-        if stop < 0: stop += dim
+        if start < 0:
+            start += dim
+        if stop < 0:
+            stop += dim
         # account for over-flowing the bounds
         if step > 0:
-            if start < 0: start = 0
-            if stop > dim: stop = dim
+            if start < 0:
+                start = 0
+            if stop > dim:
+                stop = dim
         else:
-            if stop < 0: stop = -1
-            if start > dim: start = dim-1
+            if stop < 0:
+                stop = -1
+            if start > dim:
+                start = dim-1
 
         return slice(start, stop, step)
 
