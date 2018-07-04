@@ -166,7 +166,7 @@ def to_dask(fnames):
     fmt = fnames[0].split('.')[-1]
     if fmt == 'h5':
         sample = File(fnames[0], mode='r')['default']
-        result = stack([from_array(File(fn, mode='r')['default'], chunks=sample.shape) for fn in fnames])
+        result = stack([from_array(File(fn, mode='r', libver='latest')['default'], chunks=sample.shape) for fn in fnames])
         return result
     elif fmt == 'tif':
         sample = imread(fnames[0])
