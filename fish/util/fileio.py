@@ -65,7 +65,7 @@ def _h5_reader(h5_path, roi=None):
     if roi is None:
         roi = slice(None)
 
-    with File(h5_path, 'r') as f:
+    with File(h5_path, 'r', libver='latest') as f:
         return f['default'][roi]
 
     
@@ -160,18 +160,24 @@ def to_dask(fnames):
     """
     from dask.array import from_delayed, from_array, stack
     from h5py import File
-    from skimage.io import imread
     from dask.delayed import delayed
+    from skimage.io import imread
 
     fmt = fnames[0].split('.')[-1]
+
+    @delayed
+    def delf(fn):
+        return File(fn, 'r', libver='latest')['default']
+
     if fmt == 'h5':
-        sample = File(fnames[0], mode='r')['default']
-        result = stack([from_array(File(fn, mode='r', libver='latest')['default'], chunks=sample.shape) for fn in fnames])
+        s = read_image(fnames[0])
+        result = stack([from_array(from_delayed(delf(fn), shape=s.shape, dtype=s.dtype), chunks=s.shape) for fn in fnames])
         return result
+    
     elif fmt == 'tif':
-        sample = imread(fnames[0])
+        s = imread(fnames[0])
         rdr = delayed(imread)
-        result = stack([from_delayed(rdr(fn), shape=sample.shape, dtype=sample.dtype) for fn in fnames])
+        result = stack([from_delayed(rdr(fn), shape=s.shape, dtype=s.dtype) for fn in fnames])
         return result
     else:
         raise NotImplementedError('Only .h5 files supported at this time, not {0}'.format(fmt))
