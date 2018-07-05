@@ -28,10 +28,11 @@ def _tif_writer(tif_path, image):
 def _stack_reader(stack_path, roi=None):
     from numpy import fromfile, memmap    
     from os.path import sep, split
-    from fish.image.zds import ZDS
+    from fish.image.zds import get_metadata
 
-    dims = ZDS(split(stack_path)[0] + sep).shape[1:]
-    
+    param_file = split(stack_path)[0] + sep + 'ch0.xml'
+    dims = get_metadata(param_file)['dimensions'][::-1]
+
     if roi is not None:
         im = memmap(stack_path, dtype='uint16', shape=dims)[roi] 
     else:
@@ -161,24 +162,30 @@ def to_dask(fnames):
     from dask.array import from_delayed, from_array, stack
     from h5py import File
     from dask.delayed import delayed
-    from skimage.io import imread
+    from numpy import memmap
 
     fmt = fnames[0].split('.')[-1]
+    s = read_image(fnames[0])
 
     @delayed
     def delf(fn):
         return File(fn, 'r', libver='latest')['default']
 
     if fmt == 'h5':
-        s = read_image(fnames[0])
         result = stack([from_array(from_delayed(delf(fn), shape=s.shape, dtype=s.dtype), chunks=s.shape) for fn in fnames])
         return result
 
+    elif fmt == 'stack':
+        from os.path import split, sep
+        mems = [memmap(fn, dtype=s.dtype, shape=s.shape) for fn in fnames]
+        result = stack([from_array(mem, chunks=s.shape) for mem in mems])
+        return result
+
     elif fmt == 'tif':
-        s = imread(fnames[0])
-        rdr = delayed(imread)
+        rdr = delayed(read_image)
         result = stack([from_delayed(rdr(fn), shape=s.shape, dtype=s.dtype) for fn in fnames])
         return result
+
     else:
         raise NotImplementedError('Only .h5 files supported at this time, not {0}'.format(fmt))
 
