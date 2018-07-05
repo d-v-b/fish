@@ -173,7 +173,7 @@ def to_dask(fnames):
         s = read_image(fnames[0])
         result = stack([from_array(from_delayed(delf(fn), shape=s.shape, dtype=s.dtype), chunks=s.shape) for fn in fnames])
         return result
-    
+
     elif fmt == 'tif':
         s = imread(fnames[0])
         rdr = delayed(imread)
