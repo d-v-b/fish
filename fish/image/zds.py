@@ -88,9 +88,9 @@ def get_metadata(param_file):
 def get_stack_freq(path):
     """
     Get the temporal data from the Stack_frequency.txt file found in
-    directory inDir. Return volumetric sampling rate in Hz,
-    total recording length in S, and total number
-    of planes in a tuple.
+    path. Return volumetric sampling rate in Hz,
+    total recording length in seconds, and total number
+    of volumes in a tuple.
     """
     f = open(path + 'Stack_frequency.txt')
     times = [float(line) for line in f]
