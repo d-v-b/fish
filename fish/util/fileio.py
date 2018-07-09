@@ -167,12 +167,11 @@ def to_dask(fnames):
     fmt = fnames[0].split('.')[-1]
     s = read_image(fnames[0])
 
-    @delayed
     def delf(fn):
         return File(fn, 'r', libver='latest')['default']
 
     if fmt == 'h5':
-        result = stack([from_array(from_delayed(delf(fn), shape=s.shape, dtype=s.dtype), chunks=s.shape) for fn in fnames])
+        result = stack([from_array(delf(fn), chunks=s.shape) for fn in fnames])
         return result
 
     elif fmt == 'stack':
