@@ -171,7 +171,7 @@ def to_dask(fnames):
         return File(fn, 'r', libver='latest')['default']
 
     if fmt == 'h5':
-        result = stack([from_array(delf(fn), chunks=s.shape) for fn in fnames])
+        result = stack([from_delayed(delayed(delf)(fn), s.shape, s.dtype) for fn in fnames])
         return result
 
     elif fmt == 'stack':
