@@ -122,6 +122,124 @@ def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0, arrangement=[0,1,2]):
     return stretched
 
 
+def apply_cmap(data, cmap='gray', clim='auto'):
+    """
+    Apply a matplotlib colormap to a 2D or 3D numpy array and return the rgba data in uint8 format
+
+    data : 2D or 3D numpy array
+
+    cmap : string denoting a matplotlib colormap
+        Colormap used for displaying frames from data. Defaults to 'gray'.
+
+    clim : length-2 list, tuple, or ndarray, or string
+        Upper and lower intensity limits to display from data. Defaults to 'auto'
+        If clim='auto', the min and max of data will be used as the clim.
+        Before applying the colormap, data will be clipped from clim[0] to clim[1].
+    """
+
+    from matplotlib.colors import Normalize
+    from matplotlib.cm import ScalarMappable
+
+    if clim == 'auto':
+        clim = data.min(), data.max()
+
+    sm = ScalarMappable(Normalize(*clim, clip=True), cmap)
+    rgba = [sm.to_rgba(d, bytes=True) for d in data]
+
+    return rgba
+
+
+def depth_project(data, axis=0, cmap='jet', clim='auto'):
+    """
+    Generate an RGB "depth projection" of a 3D numpy array. After the input data are normalized to [0,1], planes along
+    the projection axis are mapped to positions in a linear RGB colormap. Thus for each plane there is an RGB color,
+    and each point in the plane is multiplied with that RGB color. The output is the sum of the values along the
+    projection axis, i.e. a 3D array with the last dimension containing RGB values.
+
+    data : 3D numpy array
+
+    axis : int denoting an axis to project over
+
+    cmap : string denoting a matplotlib colormap
+
+    clim : string, or list or tuple with length 2.
+        This argument determines the minimum and maximum intensity values to use before rescaling the data to the range
+        [0,1]. The default value, 'auto', specifies that the minimum and maximum values of the input data will be mapped
+        to [0,1].
+    """
+    from matplotlib.colors import Normalize
+    from matplotlib.cm import ScalarMappable
+    from numpy import linspace, zeros, array
+    from skimage.exposure import rescale_intensity as rescale
+
+    if clim == 'auto':
+        clim = data.min(), data.max()
+    sm = ScalarMappable(Normalize(0, 1, clip=True), cmap)
+
+    cm = sm.to_rgba(linspace(0, 1, data.shape[axis]))
+    cvol = zeros((*data.shape, 4))
+    data_r = rescale(data.astype('float32'), in_range=clim, out_range=(0, 1))
+    data_r = array([data_r] * cm.shape[-1]).transpose(1, 2, 3, 0)
+    for ind in range(cvol.shape[axis]):
+        slices = [slice(None)] * cvol.ndim
+        slices[axis] = ind
+        slices = tuple(slices)
+        cvol[slices] = cm[ind] * data_r[slices]
+    cvol[:, :, :, -1] = 1
+    proj = cvol.sum(axis)
+
+    return proj
+
+
+def nparray_to_video(fname, data, clim='auto', cmap='gray', codec='h264', fps=24,
+                     ffmpeg_params=['-pix_fmt', 'yuv420p']):
+    """
+    Save 3D (t, y, x) numpy array to disk as movie. Uses matplotlib colormaps for rescaling / coloring data,
+    and uses moviepy.editor.ImageSequenceClip for movie creation.
+
+    Warning : this function duplicates the input data in memory.
+
+    fname : string
+        Filename with extension (.avi, .mp4, etc).
+
+    data : 3D numpy array
+        Each 2D array along the first axis of data will be a frame in the movie.
+
+    clim : length-2 list, tuple, or ndarray, or string
+        Upper and lower intensity limits to display from data. Defaults to 'auto'
+        If clim='auto', the min and max of data will be used as the clim.
+        Before applying the colormap, data will be clipped from clim[0] to clim[1].
+
+    cmap : string denoting a matplotlib colormap
+        Colormap used for displaying frames from data. Defaults to 'gray'.
+
+    codec :  string
+        Which video codec to use. Defaults to 'h264'. See moviepy.editor.ImageSequenceClip.writevideofile.
+
+    fps : int or float
+        Frames per second of the movie. Defaults to 24.
+
+    ffmpeg_params : list of strings
+        Arguments sent to ffmpeg during movie creation. Defaults to ['-pix_fmt', 'yuv420p'], which is necessary for
+        creating movies that OSX understands.
+
+
+    """
+    from moviepy.editor import ImageSequenceClip
+
+    dur = data.shape[0] / fps
+
+    # ffmpeg errors if the dimensions of each frame are not divisible by 2
+    if data.shape[1] % 2 == 1:
+        data = np.pad(data, ((0, 0), (0, 1), (0, 0)), mode='minimum')
+    elif data.shape[2] % 2 == 1:
+        data = np.pad(data, ((0, 0), (0, 0), (0, 1)), mode='minimum')
+
+    data_rgba = apply_cmap(data, cmap=cmap, clim=clim)
+    clip = ImageSequenceClip([d for d in data_rgba], fps=fps)
+    clip.write_videofile(fname, audio=False, codec=codec, fps=fps, ffmpeg_params=ffmpeg_params)
+
+
 class RoiDrawing(object):
     """Class for drawing ROI on matplotlib figures"""
 
