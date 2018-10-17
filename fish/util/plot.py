@@ -139,12 +139,13 @@ def apply_cmap(data, cmap='gray', clim='auto'):
 
     from matplotlib.colors import Normalize
     from matplotlib.cm import ScalarMappable
+    from numpy import array
 
     if clim == 'auto':
         clim = data.min(), data.max()
 
     sm = ScalarMappable(Normalize(*clim, clip=True), cmap)
-    rgba = [sm.to_rgba(d, bytes=True) for d in data]
+    rgba = np.array([sm.to_rgba(d, bytes=True) for d in data])
 
     return rgba
 
