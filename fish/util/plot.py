@@ -238,7 +238,7 @@ def nparray_to_video(fname, data, clim='auto', cmap='gray', codec='h264', fps=24
 
     data_rgba = apply_cmap(data, cmap=cmap, clim=clim)
     clip = ImageSequenceClip([d for d in data_rgba], fps=fps)
-    clip.write_videofile(fname, audio=False, codec=codec, fps=fps, ffmpeg_params=ffmpeg_params)
+    clip.write_videofile(fname, audio=False, codec=codec, fps=fps, ffmpeg_params=ffmpeg_params, bitrate='50000k')
 
 
 class RoiDrawing(object):
