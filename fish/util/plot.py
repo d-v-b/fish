@@ -232,7 +232,8 @@ def nparray_to_video(fname, data, clim='auto', cmap='gray', codec='h264', fps=24
     # ffmpeg errors if the dimensions of each frame are not divisible by 2
     if data.shape[1] % 2 == 1:
         data = pad(data, ((0, 0), (0, 1), (0, 0)), mode='minimum')
-    elif data.shape[2] % 2 == 1:
+
+    if data.shape[2] % 2 == 1:
         data = pad(data, ((0, 0), (0, 0), (0, 1)), mode='minimum')
 
     data_rgba = apply_cmap(data, cmap=cmap, clim=clim)
