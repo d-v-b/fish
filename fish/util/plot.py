@@ -226,15 +226,14 @@ def nparray_to_video(fname, data, clim='auto', cmap='gray', codec='h264', fps=24
 
 
     """
+    from numpy import pad
     from moviepy.editor import ImageSequenceClip
-
-    dur = data.shape[0] / fps
 
     # ffmpeg errors if the dimensions of each frame are not divisible by 2
     if data.shape[1] % 2 == 1:
-        data = np.pad(data, ((0, 0), (0, 1), (0, 0)), mode='minimum')
+        data = pad(data, ((0, 0), (0, 1), (0, 0)), mode='minimum')
     elif data.shape[2] % 2 == 1:
-        data = np.pad(data, ((0, 0), (0, 0), (0, 1)), mode='minimum')
+        data = pad(data, ((0, 0), (0, 0), (0, 1)), mode='minimum')
 
     data_rgba = apply_cmap(data, cmap=cmap, clim=clim)
     clip = ImageSequenceClip([d for d in data_rgba], fps=fps)
