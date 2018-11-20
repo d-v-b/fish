@@ -28,8 +28,13 @@ class ZDS(object):
         self.metadata = get_metadata(self.path + 'ch0.xml')
         self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
         self.files = array(sorted(glob(self.path + 'TM*')))
-        self.data = to_dask(self.files)
         self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
+        try:
+            self.data = to_dask(self.files)
+        except KeyError:
+            print('Could not create dask aray from images. Check their format.')
+            self.data = None
+
         self._affines = affines
         self._reference = None
 
