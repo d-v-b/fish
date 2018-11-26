@@ -49,7 +49,8 @@ def get_drmaa_cluster():
     # we need these on each worker to prevent multithreaded numerical operations
     pre_exec = ('export NUM_MKL_THREADS=1',
                 'export OPENBLAS_NUM_THREADS=1',
-                'export OPENMP_NUM_THREADS=1')
+                'export OPENMP_NUM_THREADS=1',
+                'export OMP_NUM_THREADS=1')
     local_directory = '/scratch/' + os.environ['USER']
     output_path = ':' + local_directory
     error_path = output_path
