@@ -37,7 +37,7 @@ class ZDS(object):
             self.data = to_dask(self.files)
 
             if single_plane:
-                self.data = self.data.reshape(self.shape)
+                self.data = self.data.reshape(self.shape).rechunk((1, *self.shape[1:]))
 
         except KeyError:
             print('Could not create dask aray from images. Check their format.')
