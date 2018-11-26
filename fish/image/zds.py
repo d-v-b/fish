@@ -18,22 +18,32 @@ from pathlib import Path
 
 class ZDS(object):
 
-    def __init__(self, experiment_path, affines=None):
+    def __init__(self, experiment_path, affines=None, single_plane=False):
         """
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
-        # todo: properly handle single-plane recordings
         self.path = experiment_path
         self.exp_name = Path(self.path).parts[-1]
         self.metadata = get_metadata(self.path + 'ch0.xml')
         self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
         self.files = array(sorted(glob(self.path + 'TM*')))
-        self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
+
+        if single_plane is False:
+            self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
+        else:
+            self.shape = (len(self.files) * self.metadata['dimensions'][-1], 1, *self.metadata['dimensions'][:-1][::-1])
+
         try:
             self.data = to_dask(self.files)
+
+            if single_plane:
+                self.data = self.data.reshape(self.shape)
+
         except KeyError:
             print('Could not create dask aray from images. Check their format.')
             self.data = None
+
+
 
         self._affines = affines
         self._reference = None
