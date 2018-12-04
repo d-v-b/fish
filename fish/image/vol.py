@@ -201,67 +201,36 @@ def sub_proj(im, ax, func, chop=16):
     return im_proj
 
 
-def montage_projection(im_dir, trange=None, context=None):
+def redim(array, ndim, shape=None):
     """
-    Generate a montage of x projections.
+    Add or remove trailing dimensions from an array by reshaping. Useful for turning N-dimensional data into the 2D
+    shape required for matrix factorization / clustering, and for reversing this transformation. Returns a view of
+    the input array.
 
-    im_dir : str, path to directory containing [x,y,z] data saved as tif
-    
-    trange : object which can be used for linear indexing, set of timepoints to use
+    array : numpy array with 2 or more dimensions.
 
-    context : spark context object for parallelization
+    ndim : int, desired number of dimensions when contracting dimensions.
+
+    shape : tuple, desired shape when expanding dimensions.
+
     """
-    import thunder as td
-    from glob import glob
-    from skimage.util.montage import montage2d
-    from skimage.exposure import rescale_intensity as rescale
-    import numpy as np
-    from pyklb import readfull
 
-    exp_name = im_dir.split('/')[-2]
+    from numpy import prod
 
-    print('Exp name: {0}'.format(exp_name))
+    result = None
+    if (ndim > array.ndim) and (shape is None):
+        raise ValueError('Cannot expand dimensions without supplying a shape argument')
 
-    fnames = glob(im_dir + 'TM*.klb')
-    fnames.sort()
+    if ndim < array.ndim:
+        new_shape = (*array.shape[:(ndim - 1)], prod(array.shape[(ndim - 1):]))
+        result = array.reshape(new_shape)
 
-    def klb_loader(v):
-        return pyklb.readfull(v)
+    elif ndim > array.ndim:
+        new_shape = shape
+        result = array.reshape(new_shape)
 
-    ims = td.images.fromlist(fnames, accessor=klb_loader, engine=context)
+    elif ndim == array.ndim:
+        new_shape = array.shape
+        result = array.reshape(new_shape)
 
-    print('Experiment dims: {0}'.format(ims.shape))
-    
-    if trange is None:
-        trange = np.arange(ims.shape[0])
-    
-    ims_cropped = ims[trange].median_filter([1, 3, 3])
-    dims = ims_cropped.dims
-
-    #todo: apply registration if available
-
-    from scipy.ndimage import percentile_filter
-    float_dtype = 'float32'
-    
-    def my_dff(y, perc, window): 
-        baseFunc = lambda x: percentile_filter(x.astype(float_dtype), perc, window, mode='reflect')
-        b = baseFunc(y)
-        return ((y - b) / (b + .1))
-
-    dff_fun = lambda v: my_dff(v, 15, 800) 
-    chop = 16
-
-    reshape_fun = lambda v: v.reshape(dims[0], dims[1], chop, dims[2] // chop)
-    montage_fun = lambda v: montage2d(v.T).T
-
-    def im_fun(v):
-        return montage_fun(reshape_fun(v).max(3))
-    
-    out_dtype = 'uint16'
-    
-    montage_ims = ims_cropped.map_as_series(dff_fun, value_size=ims_cropped.shape[0], dtype=float_dtype, chunk_size='35').map(im_fun)
-    dff_lim = montage_ims.map(lambda v: [v.max(), v.min()]).toarray()
-    rescale_fun = lambda v: rescale(v, in_range=(dff_lim.min(), dff_lim.max()), out_range=out_dtype).astype(out_dtype)
-
-    montage_rescaled = montage_ims.map(rescale_fun).toarray()[:,-1::-1,:]
-    return montage_rescaled
+    return result
