@@ -34,7 +34,7 @@ def _stack_reader(stack_path, roi=None):
     dims = get_metadata(param_file)['dimensions'][::-1]
 
     if roi is not None:
-        im = memmap(stack_path, dtype='uint16', shape=dims)[roi] 
+        im = memmap(stack_path, dtype='uint16', shape=dims, mode='r')[roi]
     else:
         im = fromfile(stack_path, dtype='uint16').reshape(dims)
         
@@ -176,7 +176,7 @@ def to_dask(fnames):
 
     elif fmt == 'stack':
         from os.path import split, sep
-        mems = [memmap(fn, dtype=s.dtype, shape=s.shape) for fn in fnames]
+        mems = [memmap(fn, dtype=s.dtype, shape=s.shape, mode='r') for fn in fnames]
         result = stack([from_array(mem, chunks=s.shape) for mem in mems])
         return result
 
