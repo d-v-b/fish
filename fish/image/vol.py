@@ -258,7 +258,7 @@ class InterpArray:
 
         self.x = x
         self.full_shape = full_shape
-        self.y = array(y)
+        self.y = y
         self.interpolation_axis = interpolation_axis
 
     def __repr__(self):
