@@ -256,7 +256,7 @@ class InterpArray:
         """
         from numpy import array
 
-        self.x = x
+        self.x = array(x)
         self.full_shape = full_shape
         self.y = y
         self.interpolation_axis = interpolation_axis
