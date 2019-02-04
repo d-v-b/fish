@@ -97,7 +97,7 @@ def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50,
     from dask.array import stack
 
     if factor is not None:
-        keyframes = linspace(0, data.shape[axis]-1, factor)
+        keyframes = linspace(0, data.shape[axis]-1, factor, dtype='int')
     elif keyframes is None:
         raise ValueError('Either factor or keyframes must be specified.')
 
