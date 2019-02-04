@@ -67,18 +67,23 @@ def get_drmaa_cluster():
     return cluster
 
 
-def get_downsampled_baseline(keyframes, data, axis=0, perc=50, window=301):
+def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50, window=301):
     """
     Generate a dask array that will take the non-sliding windowed percentile of input data along the first axis.
     Note that there is no handling of edges. Values of keyframes at the edges of the range will be result in
     the percentile being estimated over fewer values.
 
-    returns a stacked dask array where each element is the lazy percentile estimated over the 0th...len(keyframes)th
-    window. The dtype of this array will be float32.
+    Returns the keyframes and a stacked dask array where each element is the lazy percentile estimated over the
+    0th...len(keyframes)th window. The dtype of this array will be float32.
 
     keyframes : numpy array, timepoints at which to take the windowed percentile.
 
-    data : dask array
+    data : dask array.
+
+    factor: integer, the downsampling factor to apply to the data.
+
+    keyframes: sequence of integers, only used if `factor` is not supplied. These are the timepoints at which the
+               downsampled baseline will be evaluated.
 
     axis : integer, axis along which to take the percentile. defaults to 0.
 
@@ -88,15 +93,22 @@ def get_downsampled_baseline(keyframes, data, axis=0, perc=50, window=301):
 
     """
 
-    from numpy import arange, array, percentile, clip
+    from numpy import linspace, arange, array, percentile, clip
     from dask.array import stack
 
+    if factor is not None:
+        keyframes = linspace(0, data.shape[axis]-1, factor)
+    elif keyframes is None:
+        raise ValueError('Either factor or keyframes must be specified.')
+
     inds = array(
-        [arange(clip(k - window // 2, 0, None), clip(k + window // 2, 0, data.shape[axis] - 1)) for k in keyframes])
+            [arange(clip(k - window // 2, 0, None), clip(k + window // 2, 0, data.shape[axis] - 1)) for k in keyframes])
 
     def get_perc(v):
         return percentile(v, perc, axis=axis).astype('float32')
+
     rechunked = []
+
     for i in inds:
         new_chunks = ['auto'] * data.ndim
         new_chunks[axis] = len(i)
@@ -105,4 +117,4 @@ def get_downsampled_baseline(keyframes, data, axis=0, perc=50, window=301):
 
     stacked = stack([r.map_blocks(get_perc, dtype='float32', drop_axis=axis) for r in rechunked])
 
-    return stacked
+    return keyframes, stacked
