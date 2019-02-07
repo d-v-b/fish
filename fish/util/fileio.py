@@ -83,7 +83,7 @@ def _h5_writer(h5_path, data):
         f.close()
 
 
-def _jp2_reader(jp2_path, image, roi=None):
+def _jp2_reader(jp2_path, roi=None):
     from glymur import Jp2k
     return Jp2k(jp2_path).read()[roi]
 
