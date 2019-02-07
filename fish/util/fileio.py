@@ -190,13 +190,13 @@ def to_dask(fnames):
         result = stack([from_array(mem, chunks=s.shape) for mem in mems])
         return result
 
-    elif fmt == 'tif':
+    elif fmt in ('tif', 'jp2'):
         rdr = delayed(read_image)
         result = stack([from_delayed(rdr(fn), shape=s.shape, dtype=s.dtype) for fn in fnames])
         return result
 
     else:
-        raise NotImplementedError('Only .h5 files supported at this time, not {0}'.format(fmt))
+        raise NotImplementedError('{0} files not supported at this time'.format(fmt))
 
 
 def image_conversion(source_path, dest_fmt, wipe=False):
