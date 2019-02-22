@@ -67,7 +67,7 @@ def get_drmaa_cluster():
     return cluster
 
 
-def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50, window=301):
+def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=None, window=None, mode='reflect'):
     """
     Generate a dask array that will take the non-sliding windowed percentile of input data along the first axis.
     Note that there is no handling of edges. Values of keyframes at the edges of the range will be result in
@@ -91,9 +91,11 @@ def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50,
 
     window : integer, size of the window to use for computing the percentile.
 
+    mode : string, specifies how values at the boundary should be handled. Only supported mode is 'reflect'
+
     """
 
-    from numpy import linspace, arange, array, percentile, clip
+    from numpy import linspace, arange, percentile
     from dask.array import stack
 
     if factor is not None:
@@ -101,8 +103,8 @@ def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50,
     elif keyframes is None:
         raise ValueError('Either factor or keyframes must be specified.')
 
-    inds = array(
-            [arange(clip(k - window // 2, 0, None), clip(k + window // 2, 0, data.shape[axis] - 1)) for k in keyframes])
+    window_inds = arange(-(window // 2), 1 + (window // 2))
+    inds = window_inds + keyframes.reshape(-1, 1)
 
     def get_perc(v):
         return percentile(v, perc, axis=axis).astype('float32')
@@ -113,7 +115,20 @@ def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=50,
         new_chunks = ['auto'] * data.ndim
         new_chunks[axis] = len(i)
         new_chunks = tuple(new_chunks)
-        rechunked.append(data[i].rechunk(new_chunks))
+        # lower edge
+        if i[0] < 0:
+            if mode == 'reflect':
+                invalid = i[i < 0]
+                i[i < 0] = arange(len(invalid))
+
+        # upper edge
+        if i[-1] >= data.shape[axis]:
+            if mode == 'reflect':
+                invalid = i[i >= data.shape[axis]]
+                i[i >= data.shape[axis]] = arange(data.shape[axis]-1, (data.shape[axis] - 1) - len(invalid), -1)
+
+        res = data[i].rechunk(new_chunks)
+        rechunked.append(res)
 
     stacked = stack([r.map_blocks(get_perc, dtype='float32', drop_axis=axis) for r in rechunked])
 
