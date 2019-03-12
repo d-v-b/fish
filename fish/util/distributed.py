@@ -11,7 +11,7 @@
 #
 
 
-def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory='16GB', **kwargs):
+def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory='16GB', env_extra=None, **kwargs):
     """
     Instantiate a dask_jobqueue cluster using the LSF scheduler on the Janelia Research Campus compute cluster.
     This function wraps the class dask_jobqueue.LSFCLuster and instantiates this class with some sensible defaults.
@@ -22,6 +22,11 @@ def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory
     """
     from dask_jobqueue import LSFCluster
     import os
+    if env_extra is None:
+        env_extra = ['export NUM_MKL_THREADS=1',
+                     'export OPENBLAS_NUM_THREADS=1',
+                     'export OPENMP_NUM_THREADS=1',
+                     'export OMP_NUM_THREADS=1']
 
     if local_directory is None:
         local_directory = '/scratch/' + os.environ['USER'] + '/'
@@ -31,6 +36,7 @@ def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory
                          cores=cores,
                          local_directory=local_directory,
                          memory=memory,
+                         env_extra=env_extra,
                          **kwargs)
     return cluster
 
