@@ -188,6 +188,8 @@ def depth_project(data, axis=0, cmap='jet', clim='auto'):
         cvol[slices] = cm[ind] * data_r[slices]
     cvol[:, :, :, -1] = 1
     proj = cvol.sum(axis)
+    # normalize values to [0,1]
+    proj = proj / proj.max((0, 1))
 
     return proj
 
