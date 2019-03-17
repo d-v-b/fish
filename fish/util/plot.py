@@ -122,9 +122,9 @@ def proj_fuse(data, fun, aspect=(1, 1, 1), fill_value=0, arrangement=[0,1,2]):
     return stretched
 
 
-def apply_cmap(data, cmap='gray', clim='auto'):
+def apply_cmap(data, cmap='gray', clim='auto', bytes=False):
     """
-    Apply a matplotlib colormap to a 2D or 3D numpy array and return the rgba data in uint8 format
+    Apply a matplotlib colormap to a 2D or 3D numpy array and return the rgba data in float or uint8 format.
 
     data : 2D or 3D numpy array
 
@@ -135,6 +135,9 @@ def apply_cmap(data, cmap='gray', clim='auto'):
         Upper and lower intensity limits to display from data. Defaults to 'auto'
         If clim='auto', the min and max of data will be used as the clim.
         Before applying the colormap, data will be clipped from clim[0] to clim[1].
+
+    bytes : bool, defaults to False
+        If true, return values are uint8 in the range 0-255. If false, return values are float in the range 0-1
     """
 
     from matplotlib.colors import Normalize
@@ -145,7 +148,7 @@ def apply_cmap(data, cmap='gray', clim='auto'):
         clim = data.min(), data.max()
 
     sm = ScalarMappable(Normalize(*clim, clip=True), cmap)
-    rgba = array([sm.to_rgba(d, bytes=True) for d in data])
+    rgba = array([sm.to_rgba(d, bytes=bytes) for d in data])
 
     return rgba
 
