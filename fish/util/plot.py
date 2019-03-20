@@ -153,12 +153,20 @@ def apply_cmap(data, cmap='gray', clim='auto', bytes=False):
     return rgba
 
 
-def depth_project(data, axis=0, cmap='jet', clim='auto'):
+def depth_project(data, axis=0, cmap='jet', clim='auto', mode='sum'):
     """
-    Generate an RGB "depth projection" of a 3D numpy array. After the input data are normalized to [0,1], planes along
-    the projection axis are mapped to positions in a linear RGB colormap. Thus for each plane there is an RGB color,
-    and each point in the plane is multiplied with that RGB color. The output is the sum of the values along the
-    projection axis, i.e. a 3D array with the last dimension containing RGB values.
+    Generate an RGB "depth projection" of a 3D numpy array.
+
+    Input data are normalized to [0,1] and data values along the projection axis are mapped
+    to indices in a linear RGBA colormap.
+
+    If `mode` is `sum`, for each element along the projection axis there is a color, and the brightness of this color is
+    scaled by the intensity values of the data. The output is the sum of the values along the projection axis,
+    i.e. a 3D array with the last dimension containing RGB values.
+
+    If 'mode' is 'max', then the intensity values are determined by the maximum intensity projection of data over the
+    projection axis, and the color of each pixel in the maximum projection is specified by the index where the maximum
+    value was attained. In the case of repeated maxmimal values, the index of the first is used.
 
     data : 3D numpy array
 
@@ -170,29 +178,43 @@ def depth_project(data, axis=0, cmap='jet', clim='auto'):
         This argument determines the minimum and maximum intensity values to use before rescaling the data to the range
         [0,1]. The default value, 'auto', specifies that the minimum and maximum values of the input data will be mapped
         to [0,1].
+
+    mode : string determining which projection mode to use
+
+
     """
-    from matplotlib.colors import Normalize
-    from matplotlib.cm import ScalarMappable
-    from numpy import linspace, zeros, array
+    from numpy import linspace, zeros, array, argmax, all
     from skimage.exposure import rescale_intensity as rescale
+    from matplotlib.cm import get_cmap
 
     if clim == 'auto':
         clim = data.min(), data.max()
-    sm = ScalarMappable(Normalize(0, 1, clip=True), cmap)
 
-    cm = sm.to_rgba(linspace(0, 1, data.shape[axis]))
-    cvol = zeros((*data.shape, 4))
+    cm = get_cmap(cmap)(linspace(0, 1, data.shape[axis]))
     data_r = rescale(data.astype('float32'), in_range=clim, out_range=(0, 1))
-    data_r = array([data_r] * cm.shape[-1]).transpose(1, 2, 3, 0)
-    for ind in range(cvol.shape[axis]):
-        slices = [slice(None)] * cvol.ndim
-        slices[axis] = ind
-        slices = tuple(slices)
-        cvol[slices] = cm[ind] * data_r[slices]
-    cvol[:, :, :, -1] = 1
-    proj = cvol.sum(axis)
-    # normalize values to [0,1]
-    proj = proj / proj.max((0, 1))
+
+    if mode == 'sum':
+
+        cvol = zeros((*data.shape, 4))
+
+        data_r = array([data_r] * cm.shape[-1]).transpose(1, 2, 3, 0)
+        for ind in range(cvol.shape[axis]):
+            slices = [slice(None)] * cvol.ndim
+            slices[axis] = ind
+            slices = tuple(slices)
+            cvol[slices] = cm[ind] * data_r[slices]
+
+        proj = cvol.sum(axis)
+        proj[:, :, -1] = 1
+        proj[:, :, :-1] = rescale(proj[:, :, :-1], in_range=(0, proj.max()), out_range=(0, 1))
+
+    elif mode == 'max':
+        mx = data_r.max(axis)
+        dp = argmax(data_r, axis)
+        proj = (cm[dp, :].T * mx.T).T
+
+    else:
+        raise ValueError('Mode must be "sum" or "max"')
 
     return proj
 
