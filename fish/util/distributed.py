@@ -11,7 +11,14 @@
 #
 
 
-def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory='16GB', env_extra=None, **kwargs):
+def get_jobqueue_cluster(
+    walltime="12:00",
+    cores=1,
+    local_directory=None,
+    memory="16GB",
+    env_extra=None,
+    **kwargs
+):
     """
     Instantiate a dask_jobqueue cluster using the LSF scheduler on the Janelia Research Campus compute cluster.
     This function wraps the class dask_jobqueue.LSFCLuster and instantiates this class with some sensible defaults.
@@ -22,22 +29,27 @@ def get_jobqueue_cluster(walltime='12:00', cores=1, local_directory=None, memory
     """
     from dask_jobqueue import LSFCluster
     import os
+
     if env_extra is None:
-        env_extra = ['export NUM_MKL_THREADS=1',
-                     'export OPENBLAS_NUM_THREADS=1',
-                     'export OPENMP_NUM_THREADS=1',
-                     'export OMP_NUM_THREADS=1']
+        env_extra = [
+            "export NUM_MKL_THREADS=1",
+            "export OPENBLAS_NUM_THREADS=1",
+            "export OPENMP_NUM_THREADS=1",
+            "export OMP_NUM_THREADS=1",
+        ]
 
     if local_directory is None:
-        local_directory = '/scratch/' + os.environ['USER'] + '/'
+        local_directory = "/scratch/" + os.environ["USER"] + "/"
 
-    cluster = LSFCluster(queue='normal',
-                         walltime=walltime,
-                         cores=cores,
-                         local_directory=local_directory,
-                         memory=memory,
-                         env_extra=env_extra,
-                         **kwargs)
+    cluster = LSFCluster(
+        queue="normal",
+        walltime=walltime,
+        cores=cores,
+        local_directory=local_directory,
+        memory=memory,
+        env_extra=env_extra,
+        **kwargs
+    )
     return cluster
 
 
@@ -51,29 +63,35 @@ def get_drmaa_cluster():
     """
     from dask_drmaa import DRMAACluster
     import os
-    
+
     # we need these on each worker to prevent multithreaded numerical operations
-    pre_exec = ('export NUM_MKL_THREADS=1',
-                'export OPENBLAS_NUM_THREADS=1',
-                'export OPENMP_NUM_THREADS=1',
-                'export OMP_NUM_THREADS=1')
-    local_directory = '/scratch/' + os.environ['USER']
-    output_path = ':' + local_directory
+    pre_exec = (
+        "export NUM_MKL_THREADS=1",
+        "export OPENBLAS_NUM_THREADS=1",
+        "export OPENMP_NUM_THREADS=1",
+        "export OMP_NUM_THREADS=1",
+    )
+    local_directory = "/scratch/" + os.environ["USER"]
+    output_path = ":" + local_directory
     error_path = output_path
     cluster_kwargs_pass = {}
     cluster_kwargs_pass.setdefault(
-        'template',
-        {'args': ['--nthreads', '1', '--local-directory', local_directory],
-         'jobEnvironment': os.environ,
-         'outputPath': output_path,
-         'errorPath': error_path}
+        "template",
+        {
+            "args": ["--nthreads", "1", "--local-directory", local_directory],
+            "jobEnvironment": os.environ,
+            "outputPath": output_path,
+            "errorPath": error_path,
+        },
     )
-    cluster_kwargs_pass['preexec_commands'] = pre_exec
+    cluster_kwargs_pass["preexec_commands"] = pre_exec
     cluster = DRMAACluster(**cluster_kwargs_pass)
     return cluster
 
 
-def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=None, window=None, mode='reflect'):
+def get_downsampled_baseline(
+    data, factor=None, keyframes=None, axis=0, perc=None, window=None, mode="reflect"
+):
     """
     Generate a dask array that will take the non-sliding windowed percentile of input data along the first axis.
     Note that there is no handling of edges. Values of keyframes at the edges of the range will be result in
@@ -105,37 +123,41 @@ def get_downsampled_baseline(data, factor=None, keyframes=None, axis=0, perc=Non
     from dask.array import stack
 
     if factor is not None:
-        keyframes = linspace(0, data.shape[axis]-1, factor, dtype='int')
+        keyframes = linspace(0, data.shape[axis] - 1, factor, dtype="int")
     elif keyframes is None:
-        raise ValueError('Either factor or keyframes must be specified.')
+        raise ValueError("Either factor or keyframes must be specified.")
 
     window_inds = arange(-(window // 2), 1 + (window // 2))
     inds = window_inds + keyframes.reshape(-1, 1)
 
     def get_perc(v):
-        return percentile(v, perc, axis=axis).astype('float32')
+        return percentile(v, perc, axis=axis).astype("float32")
 
     rechunked = []
 
     for i in inds:
-        new_chunks = ['auto'] * data.ndim
+        new_chunks = ["auto"] * data.ndim
         new_chunks[axis] = len(i)
         new_chunks = tuple(new_chunks)
         # lower edge
         if i[0] < 0:
-            if mode == 'reflect':
+            if mode == "reflect":
                 invalid = i[i < 0]
                 i[i < 0] = arange(len(invalid))
 
         # upper edge
         if i[-1] >= data.shape[axis]:
-            if mode == 'reflect':
+            if mode == "reflect":
                 invalid = i[i >= data.shape[axis]]
-                i[i >= data.shape[axis]] = arange(data.shape[axis]-1, (data.shape[axis] - 1) - len(invalid), -1)
+                i[i >= data.shape[axis]] = arange(
+                    data.shape[axis] - 1, (data.shape[axis] - 1) - len(invalid), -1
+                )
 
         res = data[i].rechunk(new_chunks)
         rechunked.append(res)
 
-    stacked = stack([r.map_blocks(get_perc, dtype='float32', drop_axis=axis) for r in rechunked])
+    stacked = stack(
+        [r.map_blocks(get_perc, dtype="float32", drop_axis=axis) for r in rechunked]
+    )
 
     return keyframes, stacked

@@ -11,7 +11,7 @@
 #
 
 
-def local_corr(images, offset=[0,1,1]):
+def local_corr(images, offset=[0, 1, 1]):
     """
     Correlate each image in a distributed set of images with a shifted copy of itself. Returns an rdd of
     correlation coefficients.
@@ -21,14 +21,17 @@ def local_corr(images, offset=[0,1,1]):
 
     """
     from scipy.ndimage.interpolation import shift
-    
+
     def correlate_signals(s1, s2):
         from numpy import corrcoef
+
         return corrcoef(s1, s2)[0][1]
-    
-    images_shifted = images.map(lambda v: shift(v.astype('float32'), offset, mode='reflect')).astype('float16')
+
+    images_shifted = images.map(
+        lambda v: shift(v.astype("float32"), offset, mode="reflect")
+    ).astype("float16")
     joined = images.toseries().tordd().join(images_shifted.toseries().tordd())
-    
+
     return joined.mapValues(lambda v: correlate_signals(v[0], v[1]))
 
 
@@ -56,8 +59,8 @@ def baseline(data, window, percentile, downsample=1, axis=-1):
     from scipy.interpolate import interp1d
     from numpy import ones
 
-    size = ones(data.ndim, dtype='int')
-    size[axis] *= window//downsample
+    size = ones(data.ndim, dtype="int")
+    size[axis] *= window // downsample
 
     slices = [slice(None)] * data.ndim
     slices[axis] = slice(0, None, downsample)
@@ -68,7 +71,12 @@ def baseline(data, window, percentile, downsample=1, axis=-1):
     else:
         data_ds = data[slices]
         baseline_ds = percentile_filter(data_ds, percentile=percentile, size=size)
-        interper = interp1d(range(0, data.shape[axis], downsample), baseline_ds, axis=axis, fill_value='extrapolate')
+        interper = interp1d(
+            range(0, data.shape[axis], downsample),
+            baseline_ds,
+            axis=axis,
+            fill_value="extrapolate",
+        )
         bl = interper(range(data.shape[axis]))
 
     return bl
@@ -116,7 +124,7 @@ def filter_flat(vol, mask):
     vol_flat = vol.ravel()
 
     # if mask is a function, call it on vol to make the mask
-    if hasattr(mask, '__call__'):
+    if hasattr(mask, "__call__"):
         mask_flat = mask(vol).ravel()
     else:
         mask_flat = mask.ravel()
@@ -133,6 +141,7 @@ def unfilter_flat(vec, mask):
     """
 
     from numpy import zeros
+
     """
     Fill a binary mask with the values in vec
     """
@@ -158,7 +167,7 @@ def kvp_to_array(dims, data, ind=0, baseline=0):
 
     for k, v in data:
         # check if data contains a single value or an iterable
-        if hasattr(v, '__iter__'):
+        if hasattr(v, "__iter__"):
             vol[k] = v[ind]
         else:
             vol[k] = v
@@ -219,10 +228,10 @@ def redim(array, ndim, shape=None):
 
     result = None
     if (ndim > array.ndim) and (shape is None):
-        raise ValueError('Cannot expand dimensions without supplying a shape argument')
+        raise ValueError("Cannot expand dimensions without supplying a shape argument")
 
     if ndim < array.ndim:
-        new_shape = (*array.shape[:(ndim - 1)], prod(array.shape[(ndim - 1):]))
+        new_shape = (*array.shape[: (ndim - 1)], prod(array.shape[(ndim - 1) :]))
         result = array.reshape(new_shape)
 
     elif ndim > array.ndim:
@@ -237,7 +246,6 @@ def redim(array, ndim, shape=None):
 
 
 class InterpArray:
-
     def __init__(self, x, y, full_shape, interpolation_axis):
         """
         Create an array of numeric values representing a downsampled version of a larger array. This object is
@@ -262,14 +270,17 @@ class InterpArray:
         self.interpolation_axis = interpolation_axis
 
     def __repr__(self):
-        return f'An interpolated array with size {self.full_shape} sampled' \
-               f' at {self.x} along axis {self.interpolation_axis}'
+        return (
+            f"An interpolated array with size {self.full_shape} sampled"
+            f" at {self.x} along axis {self.interpolation_axis}"
+        )
 
     def _instantiate_slice_indices(self, slc, axis):
         """
         Replace a slice object ``slc`` along ``axis`` with a numpy array that spans the same range
         """
         from numpy import arange
+
         return arange(self.full_shape[axis])[slc]
 
     def _get_interpolated_value(self, idx):
@@ -299,12 +310,18 @@ class InterpArray:
                 continue
 
             interval = diff(self.x)[ds_ind_pre]
-            coeffs = array([interval - abs(d_[ds_ind_pre]), abs(d_[ds_ind_pre])]) / interval
+            coeffs = (
+                array([interval - abs(d_[ds_ind_pre]), abs(d_[ds_ind_pre])]) / interval
+            )
 
             idx_inner[ipax] = slice(ds_ind_pre, ds_ind_pre + 2)
 
             # non-slice indices (ints) will drop an axis
-            keep_axes = [ind for ind in range(len(idx_inner)) if isinstance(idx_inner[ind], slice)]
+            keep_axes = [
+                ind
+                for ind in range(len(idx_inner))
+                if isinstance(idx_inner[ind], slice)
+            ]
 
             y_ = self.y[tuple(idx_inner)]
 
@@ -312,7 +329,9 @@ class InterpArray:
             new_coeff_shape[keep_axes.index(ipax)] = coeffs.size
 
             # perform linear interpolation
-            result.append((coeffs.reshape(new_coeff_shape) * y_).sum(keep_axes.index(ipax)))
+            result.append(
+                (coeffs.reshape(new_coeff_shape) * y_).sum(keep_axes.index(ipax))
+            )
 
         return self._concat_arrays(result)
 

@@ -13,6 +13,7 @@
 
 class ROI(object):
     """class for representing a single polygonal ROI"""
+
     def __init__(self, image=[], x=[], y=[]):
         if image is not None:
             self.image = image
@@ -22,7 +23,7 @@ class ROI(object):
             self.y = y
 
     def __repr__(self):
-        return 'An ROI containing {0} points'.format(len(self.x))
+        return "An ROI containing {0} points".format(len(self.x))
 
     def reset(self):
         self.x = []
@@ -31,8 +32,9 @@ class ROI(object):
     def get_mask(self):
         from matplotlib.path import Path
         from numpy import meshgrid, zeros, array, where
+
         data = self.image
-        mask = zeros(data.shape, dtype='uint8')
+        mask = zeros(data.shape, dtype="uint8")
 
         if (len(self.y) > 2) & (len(self.x) > 2):
 
@@ -47,6 +49,6 @@ class ROI(object):
             for t in in_points:
                 mask[t] = 255
         else:
-            print('Mask requires 3 or more points')
+            print("Mask requires 3 or more points")
 
         return mask

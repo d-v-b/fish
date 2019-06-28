@@ -11,8 +11,14 @@
 #
 
 
-def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4, 2, 1), level_iters=(1000, 1000, 1000),
-                         sigmas=(8, 4, 1)):
+def estimate_translation(
+    fixed,
+    moving,
+    metric_sampling=1.0,
+    factors=(4, 2, 1),
+    level_iters=(1000, 1000, 1000),
+    sigmas=(8, 4, 1),
+):
     """
     Estimate translation between 2D or 3D images using dipy.align.
 
@@ -41,7 +47,13 @@ def estimate_translation(fixed, moving, metric_sampling=1.0, factors=(4, 2, 1), 
     from dipy.align.imaffine import AffineRegistration, MutualInformationMetric
 
     metric = MutualInformationMetric(32, metric_sampling)
-    affreg = AffineRegistration(metric=metric, level_iters=level_iters, sigmas=sigmas, factors=factors, verbosity=0)
+    affreg = AffineRegistration(
+        metric=metric,
+        level_iters=level_iters,
+        sigmas=sigmas,
+        factors=factors,
+        verbosity=0,
+    )
 
     if fixed.ndim == 2:
         transform = TranslationTransform2D()
@@ -60,10 +72,20 @@ class SYNreg(object):
     estimated from spatially downsampled data.
     """
 
-    def __init__(self, level_iters_lin, sigmas, factors, level_iters_syn, metric_lin=None,
-                 metric_syn=None, ss_sigma_factor=1.0, verbosity=0):
+    def __init__(
+        self,
+        level_iters_lin,
+        sigmas,
+        factors,
+        level_iters_syn,
+        metric_lin=None,
+        metric_syn=None,
+        ss_sigma_factor=1.0,
+        verbosity=0,
+    ):
         from dipy.align.metrics import CCMetric
         from dipy.align.imaffine import MutualInformationMetric
+
         self.level_iters_lin = level_iters_lin
         self.sigmas = sigmas
         self.factors = factors
@@ -86,7 +108,11 @@ class SYNreg(object):
     def generate_warp_field(self, static, moving, static_axis_units, moving_axis_units):
         from numpy import eye
         from dipy.align.imaffine import AffineRegistration
-        from dipy.align.transforms import TranslationTransform3D, RigidTransform3D, AffineTransform3D
+        from dipy.align.transforms import (
+            TranslationTransform3D,
+            RigidTransform3D,
+            AffineTransform3D,
+        )
         from dipy.align.imwarp import SymmetricDiffeomorphicRegistration as SDR
 
         static_g2w = eye(1 + static.ndim)
@@ -96,42 +122,54 @@ class SYNreg(object):
         static_g2w[range(static.ndim), range(static.ndim)] = static_axis_units
         moving_g2w[range(moving.ndim), range(moving.ndim)] = moving_axis_units
 
-        self.affreg = AffineRegistration(metric=self.metric_lin,
-                                         level_iters=self.level_iters_lin,
-                                         sigmas=self.sigmas,
-                                         factors=self.factors,
-                                         verbosity=self.verbosity,
-                                         ss_sigma_factor=self.ss_sigma_factor)
+        self.affreg = AffineRegistration(
+            metric=self.metric_lin,
+            level_iters=self.level_iters_lin,
+            sigmas=self.sigmas,
+            factors=self.factors,
+            verbosity=self.verbosity,
+            ss_sigma_factor=self.ss_sigma_factor,
+        )
 
-        self.sdreg = SDR(metric=self.metric_syn,
-                         level_iters=self.level_iters_syn,
-                         ss_sigma_factor=self.ss_sigma_factor)
+        self.sdreg = SDR(
+            metric=self.metric_syn,
+            level_iters=self.level_iters_syn,
+            ss_sigma_factor=self.ss_sigma_factor,
+        )
 
-        self.translation_tx = self.affreg.optimize(static,
-                                                   moving,
-                                                   TranslationTransform3D(),
-                                                   params0,
-                                                   static_g2w,
-                                                   moving_g2w,
-                                                   starting_affine='mass')
+        self.translation_tx = self.affreg.optimize(
+            static,
+            moving,
+            TranslationTransform3D(),
+            params0,
+            static_g2w,
+            moving_g2w,
+            starting_affine="mass",
+        )
 
-        self.rigid_tx = self.affreg.optimize(static,
-                                             moving,
-                                             RigidTransform3D(),
-                                             params0,
-                                             static_g2w,
-                                             moving_g2w,
-                                             starting_affine=self.translation_tx.affine)
+        self.rigid_tx = self.affreg.optimize(
+            static,
+            moving,
+            RigidTransform3D(),
+            params0,
+            static_g2w,
+            moving_g2w,
+            starting_affine=self.translation_tx.affine,
+        )
 
-        self.affine_tx = self.affreg.optimize(static,
-                                              moving,
-                                              AffineTransform3D(),
-                                              params0,
-                                              static_g2w,
-                                              moving_g2w,
-                                              starting_affine=self.rigid_tx.affine)
+        self.affine_tx = self.affreg.optimize(
+            static,
+            moving,
+            AffineTransform3D(),
+            params0,
+            static_g2w,
+            moving_g2w,
+            starting_affine=self.rigid_tx.affine,
+        )
 
-        self.sdr_tx = self.sdreg.optimize(static, moving, static_g2w, moving_g2w, self.affine_tx.affine)
+        self.sdr_tx = self.sdreg.optimize(
+            static, moving, static_g2w, moving_g2w, self.affine_tx.affine
+        )
 
     def apply_transform(self, moving, moving_axis_units, desired_transform):
         from numpy import eye
@@ -143,15 +181,19 @@ class SYNreg(object):
         txs = dict(affine=self.affine_tx, sdr=self.sdr_tx)
         tx = txs[desired_transform]
 
-        if desired_transform == 'sdr':
-            result = tx.transform(moving,
-                                  image_world2grid=inv(moving_g2w),
-                                  out_shape=moving.shape,
-                                  out_grid2world=moving_g2w)
+        if desired_transform == "sdr":
+            result = tx.transform(
+                moving,
+                image_world2grid=inv(moving_g2w),
+                out_shape=moving.shape,
+                out_grid2world=moving_g2w,
+            )
         else:
-            result = tx.transform(moving,
-                                  image_grid2world=moving_g2w,
-                                  sampling_grid_shape=moving.shape,
-                                  sampling_grid2world=moving_g2w)
+            result = tx.transform(
+                moving,
+                image_grid2world=moving_g2w,
+                sampling_grid_shape=moving.shape,
+                sampling_grid2world=moving_g2w,
+            )
 
         return result

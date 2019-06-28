@@ -17,21 +17,24 @@ from pathlib import Path
 
 
 class ZDS(object):
-
     def __init__(self, experiment_path, affines=None, single_plane=False):
         """
         initialize a zebrascope data structure with a path to a folder containing raw data and metadata
         """
         self.path = experiment_path
         self.exp_name = Path(self.path).parts[-1]
-        self.metadata = get_metadata(self.path + 'ch0.xml')
-        self.metadata['volume_rate'] = get_stack_freq(self.path)[0]
-        self.files = array(sorted(glob(self.path + 'TM*')))
+        self.metadata = get_metadata(self.path + "ch0.xml")
+        self.metadata["volume_rate"] = get_stack_freq(self.path)[0]
+        self.files = array(sorted(glob(self.path + "TM*")))
 
         if single_plane is False:
-            self.shape = (len(self.files), *self.metadata['dimensions'][::-1])
+            self.shape = (len(self.files), *self.metadata["dimensions"][::-1])
         else:
-            self.shape = (len(self.files) * self.metadata['dimensions'][-1], 1, *self.metadata['dimensions'][:-1][::-1])
+            self.shape = (
+                len(self.files) * self.metadata["dimensions"][-1],
+                1,
+                *self.metadata["dimensions"][:-1][::-1],
+            )
 
         try:
             self.data = to_dask(self.files)
@@ -40,10 +43,8 @@ class ZDS(object):
                 self.data = self.data.reshape(self.shape).rechunk((1, *self.shape[1:]))
 
         except KeyError:
-            print('Could not create dask aray from images. Check their format.')
+            print("Could not create dask aray from images. Check their format.")
             self.data = None
-
-
 
         self._affines = affines
         self._reference = None
@@ -55,7 +56,9 @@ class ZDS(object):
     @affines.setter
     def affines(self, value):
         if value.shape[0] != len(self.files):
-            raise ValueError('Length of affines must match length of the first axis of the data.')
+            raise ValueError(
+                "Length of affines must match length of the first axis of the data."
+            )
         self._affines = value
 
     @property
@@ -67,7 +70,7 @@ class ZDS(object):
         self._reference = value
 
     def __repr__(self):
-        return 'Experiment name: {0} \nShape: {1}'.format(self.exp_name, self.shape)
+        return "Experiment name: {0} \nShape: {1}".format(self.exp_name, self.shape)
 
 
 def get_metadata(param_file):
@@ -86,16 +89,16 @@ def get_metadata(param_file):
     exp_dict = {}
     root = ET.parse(param_file, parser=parser).getroot()
 
-    for r in root.findall('info'):
+    for r in root.findall("info"):
         exp_dict[r.keys()[0]] = r.items()[0][1]
 
     # convert dimensions from a string formatted 'X_sizexY_sizexZsize' to a numpy array
-    if type(exp_dict['dimensions']) is str:
-        exp_dict['dimensions'] = array(exp_dict['dimensions'].split('x')).astype('int')
+    if type(exp_dict["dimensions"]) is str:
+        exp_dict["dimensions"] = array(exp_dict["dimensions"].split("x")).astype("int")
 
     # convert z step from string to float
-    if type(exp_dict['z_step']) is str:
-        exp_dict['z_step'] = float(exp_dict['z_step'])
+    if type(exp_dict["z_step"]) is str:
+        exp_dict["z_step"] = float(exp_dict["z_step"])
 
     return exp_dict
 
@@ -107,7 +110,7 @@ def get_stack_freq(path):
     total recording length in seconds, and total number
     of volumes in a tuple.
     """
-    f = open(path + 'Stack_frequency.txt')
+    f = open(path + "Stack_frequency.txt")
     times = [float(line) for line in f]
 
     # third value should be an integer
@@ -128,10 +131,11 @@ def rearrange_bidirectional_stack(stack_data):
     """
 
     from numpy import zeros, ceil
+
     z = stack_data.shape[0]
     midpoint = int(ceil(z / 2))
     z_range_old = range(z)
-    z_range_new = zeros(z, dtype='int')
+    z_range_new = zeros(z, dtype="int")
 
     if (z % 2) == 0:
         z_range_new[1::2] = z_range_old[:midpoint]

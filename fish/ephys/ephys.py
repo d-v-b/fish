@@ -28,6 +28,7 @@ def match_cam_time(events, frame_times):
 
     """
     from numpy import array
+
     output = []
     for a in events:
         lags = array(a - frame_times)
@@ -62,14 +63,14 @@ def chop_trials(signal, thr=2000):
     for c in conditions:
         tmp = where(signal == c)[0]
         offs = where(diff(tmp) > 1)[0]
-        offs = concatenate((offs, [tmp.size-1]))
+        offs = concatenate((offs, [tmp.size - 1]))
         ons = concatenate(([0], offs[0:-1] + 1))
-        trLens = offs - ons        
+        trLens = offs - ons
         keep_trials = where(trLens > thr)
         offs = offs[keep_trials]
         ons = ons[keep_trials]
         chopped[c] = (tmp[ons], tmp[offs])
-    
+
     return chopped
 
 
@@ -92,6 +93,7 @@ def estimate_onset(signal, threshold, duration):
 
     """
     from numpy import where, diff, concatenate
+
     inits = 1 + where((signal[:-1] < threshold) * (signal[1:] > threshold))[0]
     valid = concatenate([[0], 1 + where(diff(inits) > duration)[0]])
     return inits[valid]
@@ -113,10 +115,10 @@ def estimate_swims(signal, fs=6000):
     from numpy import zeros, where, diff, concatenate
 
     # set dead time between peaks, in seconds. This prevents duplicate swims.
-    dead_time = .010 * fs
+    dead_time = 0.010 * fs
 
     # set minimum duration between swim bursts in seconds
-    inter_swim_min = .12 * fs
+    inter_swim_min = 0.12 * fs
 
     # estimate swim threshold
     thr = estimate_threshold(signal, fs * 60)
@@ -129,7 +131,7 @@ def estimate_swims(signal, fs=6000):
 
     interSwims = diff(burstIndT)
     swimEndIndB = where(interSwims > inter_swim_min)[0]
-    swimEndIndB = concatenate((swimEndIndB, [burstIndT.size-1]))
+    swimEndIndB = concatenate((swimEndIndB, [burstIndT.size - 1]))
 
     swimStartIndB = swimEndIndB[:-1] + 1
     swimStartIndB = concatenate(([0], swimStartIndB))
@@ -165,7 +167,7 @@ def windowed_variance(signal, kern_mean=None, kern_var=None, fs=6000):
     from scipy.signal import gaussian, fftconvolve
 
     # set the width of the kernels to use for smoothing
-    kw = int(.04 * fs)
+    kw = int(0.04 * fs)
 
     if kern_mean is None:
         kern_mean = gaussian(kw, kw // 10)
@@ -175,9 +177,9 @@ def windowed_variance(signal, kern_mean=None, kern_var=None, fs=6000):
         kern_var = gaussian(kw, kw // 10)
         kern_var /= kern_var.sum()
 
-    mean_estimate = fftconvolve(signal, kern_mean, 'same')
+    mean_estimate = fftconvolve(signal, kern_mean, "same")
     var_estimate = (signal - mean_estimate) ** 2
-    fltch = fftconvolve(var_estimate, kern_var, 'same')
+    fltch = fftconvolve(var_estimate, kern_var, "same")
 
     return fltch, var_estimate, mean_estimate
 
@@ -204,17 +206,17 @@ def estimate_peaks(signal, dead_time):
 
     # take the difference between consecutive indices
     d_inds = diff(inds)
-                    
+
     # find differences greater than deadtime
-    to_keep = (d_inds > dead_time)
-    
-    # only keep the indices corresponding to differences greater than deadT 
+    to_keep = d_inds > dead_time
+
+    # only keep the indices corresponding to differences greater than deadT
     inds[1:] = inds[1:] * to_keep
     inds = inds[inds.nonzero()]
-    
+
     peaks = zeros(signal.shape[0])
     peaks[inds] = 1
-    
+
     return peaks, inds
 
 
@@ -222,22 +224,24 @@ def load(in_file, num_channels=10, memmap=False):
     """Load multichannel binary data from disk, return as a [channels,samples] sized numpy array
     """
     from numpy import fromfile, float32
+
     if memmap:
         from numpy import memmap
+
         data = memmap(in_file, dtype=float32)
     else:
-        with open(in_file, 'rb') as fd:
+        with open(in_file, "rb") as fd:
             data = fromfile(file=fd, dtype=float32)
     trim = data.size % num_channels
     # transpose to make dimensions [channels, time]
-    data = data[:(data.size - trim)].reshape(data.size // num_channels, num_channels).T
+    data = data[: (data.size - trim)].reshape(data.size // num_channels, num_channels).T
     if trim > 0:
-        print('Data needed to be truncated!')
+        print("Data needed to be truncated!")
 
     return data
 
 
-def estimate_threshold(signal, window=180000, scaling=1.6, lower_percentile=.01):
+def estimate_threshold(signal, window=180000, scaling=1.6, lower_percentile=0.01):
     """
     Return non-sliding windowed threshold of input ndarray vec.
 
@@ -265,6 +269,6 @@ def estimate_threshold(signal, window=180000, scaling=1.6, lower_percentile=.01)
         sig = signal[plr]
         med = median(sig)
         bottom = percentile(sig, lower_percentile)
-        th[t:] = (med + scaling * (med - bottom))
+        th[t:] = med + scaling * (med - bottom)
 
     return th
