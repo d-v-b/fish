@@ -48,6 +48,7 @@ def get_jobqueue_cluster(
         local_directory=local_directory,
         memory=memory,
         env_extra=env_extra,
+        job_extra=['-o /dev/null'],
         **kwargs
     )
     return cluster
